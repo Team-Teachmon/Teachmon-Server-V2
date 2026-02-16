@@ -6,9 +6,11 @@ import org.springframework.data.repository.query.Param;
 import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
 
 import org.springframework.stereotype.Repository;
+import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
 import solvit.teachmon.global.enums.SchoolPeriod;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Repository
 public interface PlaceRepository extends JpaRepository<PlaceEntity, Long>, PlaceQueryDslRepository {
@@ -20,10 +22,12 @@ public interface PlaceRepository extends JpaRepository<PlaceEntity, Long>, Place
             WHERE ss.day = :day
               AND ss.period = :period
               AND ass.place = :place
+              AND s.type NOT IN :types
             """)
-    boolean existByDayAndPeriodAndPlace(
+    boolean existByDayAndPeriodAndPlaceAndTypesNotIn(
             @Param("day") LocalDate day,
             @Param("period") SchoolPeriod period,
-            @Param("place") PlaceEntity place
+            @Param("place") PlaceEntity place,
+            @Param("types") List<ScheduleType> types
     );
 }
