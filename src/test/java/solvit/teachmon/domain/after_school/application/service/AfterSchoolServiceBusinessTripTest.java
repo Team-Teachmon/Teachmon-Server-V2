@@ -14,11 +14,15 @@ import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolReposito
 import solvit.teachmon.domain.after_school.domain.service.AfterSchoolStudentDomainService;
 import solvit.teachmon.domain.after_school.exception.AfterSchoolNotFoundException;
 import solvit.teachmon.domain.after_school.presentation.dto.request.AfterSchoolBusinessTripRequestDto;
+import solvit.teachmon.domain.after_school.presentation.dto.response.AfterSchoolAffordableBusinessResponseDto;
+import solvit.teachmon.domain.branch.domain.entity.BranchEntity;
 import solvit.teachmon.domain.branch.domain.repository.BranchRepository;
+import solvit.teachmon.domain.branch.exception.BranchNotFoundException;
 import solvit.teachmon.domain.management.student.domain.repository.StudentRepository;
 import solvit.teachmon.domain.management.teacher.domain.repository.SupervisionBanDayRepository;
 import solvit.teachmon.domain.place.domain.repository.PlaceRepository;
 import solvit.teachmon.domain.user.domain.repository.TeacherRepository;
+import solvit.teachmon.global.enums.WeekDay;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -111,5 +115,114 @@ class AfterSchoolServiceBusinessTripTest {
 
         verify(afterSchoolRepository).findWithAllRelations(1L);
         verify(afterSchoolBusinessTripRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("출장 가능한 날짜 목록을 성공적으로 조회한다")
+    void shouldGetBusinessTripDatesSuccessfully() {
+        // Given
+        Long afterSchoolId = 1L;
+        LocalDate startDay = LocalDate.of(2025, 3, 3); // 월요일
+        LocalDate afterSchoolEndDay = LocalDate.of(2025, 3, 31);
+        
+        BranchEntity branch = mock(BranchEntity.class);
+        given(branch.getStartDay()).willReturn(startDay);
+        given(branch.getAfterSchoolEndDay()).willReturn(afterSchoolEndDay);
+        
+        given(branchRepository.findCurrentBranch(any(LocalDate.class)))
+                .willReturn(Optional.of(branch));
+        given(afterSchoolRepository.findWithAllRelations(afterSchoolId))
+                .willReturn(Optional.of(afterSchool));
+        given(afterSchool.getWeekDay()).willReturn(WeekDay.MON);
+
+        // When
+        AfterSchoolAffordableBusinessResponseDto result = afterSchoolService.getBusinessTrip(afterSchoolId);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.dates()).isNotEmpty();
+        
+        // 모든 날짜가 월요일인지 확인
+        result.dates().forEach(date -> 
+            assertThat(date.getDayOfWeek()).isEqualTo(WeekDay.MON.toDayOfWeek())
+        );
+        
+        // 날짜가 범위 내에 있는지 확인
+        result.dates().forEach(date -> {
+            assertThat(date).isAfterOrEqualTo(startDay);
+            assertThat(date).isBefore(afterSchoolEndDay);
+        });
+
+        verify(branchRepository).findCurrentBranch(any(LocalDate.class));
+        verify(afterSchoolRepository).findWithAllRelations(afterSchoolId);
+    }
+
+    @Test
+    @DisplayName("현재 분기를 찾을 수 없을 때 예외가 발생한다")
+    void shouldThrowExceptionWhenBranchNotFound() {
+        // Given
+        Long afterSchoolId = 1L;
+        given(branchRepository.findCurrentBranch(any(LocalDate.class)))
+                .willReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> afterSchoolService.getBusinessTrip(afterSchoolId))
+                .isInstanceOf(BranchNotFoundException.class);
+
+        verify(branchRepository).findCurrentBranch(any(LocalDate.class));
+        verify(afterSchoolRepository, never()).findWithAllRelations(any());
+    }
+
+    @Test
+    @DisplayName("방과후를 찾을 수 없을 때 예외가 발생한다")
+    void shouldThrowExceptionWhenAfterSchoolNotFoundForBusinessTrip() {
+        // Given
+        Long afterSchoolId = 1L;
+        BranchEntity branch = mock(BranchEntity.class);
+        given(branchRepository.findCurrentBranch(any(LocalDate.class)))
+                .willReturn(Optional.of(branch));
+        given(afterSchoolRepository.findWithAllRelations(afterSchoolId))
+                .willReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> afterSchoolService.getBusinessTrip(afterSchoolId))
+                .isInstanceOf(AfterSchoolNotFoundException.class);
+
+        verify(branchRepository).findCurrentBranch(any(LocalDate.class));
+        verify(afterSchoolRepository).findWithAllRelations(afterSchoolId);
+    }
+
+    @Test
+    @DisplayName("화요일 방과후의 출장 가능 날짜를 정확히 조회한다")
+    void shouldGetBusinessTripDatesForTuesday() {
+        // Given
+        Long afterSchoolId = 1L;
+        LocalDate startDay = LocalDate.of(2025, 3, 3); // 월요일
+        LocalDate afterSchoolEndDay = LocalDate.of(2025, 3, 31);
+        
+        BranchEntity branch = mock(BranchEntity.class);
+        given(branch.getStartDay()).willReturn(startDay);
+        given(branch.getAfterSchoolEndDay()).willReturn(afterSchoolEndDay);
+        
+        given(branchRepository.findCurrentBranch(any(LocalDate.class)))
+                .willReturn(Optional.of(branch));
+        given(afterSchoolRepository.findWithAllRelations(afterSchoolId))
+                .willReturn(Optional.of(afterSchool));
+        given(afterSchool.getWeekDay()).willReturn(WeekDay.TUE);
+
+        // When
+        AfterSchoolAffordableBusinessResponseDto result = afterSchoolService.getBusinessTrip(afterSchoolId);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.dates()).isNotEmpty();
+        
+        // 모든 날짜가 화요일인지 확인
+        result.dates().forEach(date -> 
+            assertThat(date.getDayOfWeek()).isEqualTo(WeekDay.TUE.toDayOfWeek())
+        );
+        
+        // 첫 번째 날짜가 3월 4일(화요일)인지 확인
+        assertThat(result.dates().get(0)).isEqualTo(LocalDate.of(2025, 3, 4));
     }
 }

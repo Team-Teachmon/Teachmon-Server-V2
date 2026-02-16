@@ -12,6 +12,7 @@ import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolReposito
 import solvit.teachmon.domain.after_school.domain.service.AfterSchoolStudentDomainService;
 import solvit.teachmon.domain.after_school.domain.vo.StudentAssignmentResultVo;
 import solvit.teachmon.domain.after_school.exception.AfterSchoolNotFoundException;
+import solvit.teachmon.domain.after_school.presentation.dto.response.*;
 import solvit.teachmon.domain.management.teacher.domain.entity.SupervisionBanDayEntity;
 import solvit.teachmon.domain.management.teacher.domain.repository.SupervisionBanDayRepository;
 import solvit.teachmon.domain.place.exception.PlaceNotFoundException;
@@ -20,10 +21,6 @@ import solvit.teachmon.domain.after_school.presentation.dto.request.AfterSchoolC
 import solvit.teachmon.domain.after_school.presentation.dto.request.AfterSchoolReinforcementRequestDto;
 import solvit.teachmon.domain.after_school.presentation.dto.request.AfterSchoolUpdateRequestDto;
 import solvit.teachmon.domain.after_school.presentation.dto.request.AfterSchoolSearchRequestDto;
-import solvit.teachmon.domain.after_school.presentation.dto.response.AfterSchoolResponseDto;
-import solvit.teachmon.domain.after_school.presentation.dto.response.AfterSchoolMyResponseDto;
-import solvit.teachmon.domain.after_school.presentation.dto.response.AfterSchoolByTeacherResponseDto;
-import solvit.teachmon.domain.after_school.presentation.dto.response.AfterSchoolTodayResponseDto;
 import solvit.teachmon.domain.branch.domain.entity.BranchEntity;
 import solvit.teachmon.domain.branch.domain.repository.BranchRepository;
 import solvit.teachmon.domain.branch.exception.BranchNotFoundException;
@@ -38,7 +35,9 @@ import solvit.teachmon.domain.user.exception.TeacherNotFoundException;
 import solvit.teachmon.global.enums.SchoolPeriod;
 import solvit.teachmon.global.enums.WeekDay;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -270,4 +269,21 @@ public class AfterSchoolService {
         afterSchoolReinforcementRepository.save(reinforcement);
     }
 
+    @Transactional(readOnly = true)
+    public AfterSchoolAffordableBusinessResponseDto getBusinessTrip(Long afterSchoolId) {
+        LocalDate now = LocalDate.now();
+        BranchEntity branchEntity = branchRepository.findCurrentBranch(now).orElseThrow(BranchNotFoundException::new);
+        LocalDate startDay = branchEntity.getStartDay();
+        LocalDate afterSchoolEndDay = branchEntity.getAfterSchoolEndDay();
+        AfterSchoolEntity afterSchool = getAfterSchoolById(afterSchoolId);
+        List<LocalDate> localDates = new ArrayList<>();
+        for(LocalDate day = startDay; day.isBefore(afterSchoolEndDay); day = day.plusDays(1)) {
+            DayOfWeek dayOfWeek = afterSchool.getWeekDay().toDayOfWeek();
+            if(!day.getDayOfWeek().equals(dayOfWeek)) continue;
+            localDates.add(day);
+        }
+        return AfterSchoolAffordableBusinessResponseDto.builder()
+                .dates(localDates)
+                .build();
+    }
 }

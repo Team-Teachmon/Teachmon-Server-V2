@@ -30,4 +30,7 @@ public interface BranchRepository extends JpaRepository<BranchEntity, Long> {
 
     @Query("SELECT b FROM BranchEntity b WHERE b.afterSchoolEndDay = :date")
     Optional<BranchEntity> findByAfterSchoolDate(@Param("date") LocalDate date);
+    
+    @Query("SELECT b FROM BranchEntity b WHERE :date BETWEEN b.startDay AND b.endDay")
+    Optional<BranchEntity> findCurrentBranch(@Param("date") LocalDate date);
 }
