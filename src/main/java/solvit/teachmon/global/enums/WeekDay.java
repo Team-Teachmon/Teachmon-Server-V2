@@ -7,7 +7,8 @@ public enum WeekDay {
     MON,
     TUE,
     WED,
-    THU;
+    THU,
+    FRI;
 
     public String toKorean() {
         return switch (this) {
@@ -15,6 +16,7 @@ public enum WeekDay {
             case TUE -> "화";
             case WED -> "수";
             case THU -> "목";
+            case FRI -> "금";
         };
     }
 
@@ -24,6 +26,7 @@ public enum WeekDay {
             case TUE -> "화요일";
             case WED -> "수요일";
             case THU -> "목요일";
+            case FRI -> "금요일";
         };
     }
 
@@ -33,6 +36,7 @@ public enum WeekDay {
             case "화요일", "화" -> TUE;
             case "수요일", "수" -> WED;
             case "목요일", "목" -> THU;
+            case "금요일", "금" -> FRI;
             default -> throw new IllegalArgumentException("Invalid WeekDay: " + value);
         };
     }
@@ -46,6 +50,7 @@ public enum WeekDay {
             case TUESDAY -> TUE;
             case WEDNESDAY -> WED;
             case THURSDAY -> THU;
+            case FRIDAY -> FRI;
             default -> throw new IllegalArgumentException("서비스에서 지원하는 요일이 아닙니다.");
         };
     }
@@ -56,6 +61,7 @@ public enum WeekDay {
             case TUESDAY -> TUE;
             case WEDNESDAY -> WED;
             case THURSDAY -> THU;
+            case FRIDAY -> FRI;
             default -> throw new IllegalArgumentException("서비스에서 지원하는 요일이 아닙니다.");
         };
     }
@@ -66,6 +72,7 @@ public enum WeekDay {
             case TUE -> DayOfWeek.TUESDAY;
             case WED -> DayOfWeek.WEDNESDAY;
             case THU -> DayOfWeek.THURSDAY;
+            case FRI -> DayOfWeek.FRIDAY;
         };
     }
 }

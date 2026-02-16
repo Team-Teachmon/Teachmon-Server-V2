@@ -38,7 +38,7 @@ class StudentScheduleGeneratorTest {
     private StudentScheduleGenerator studentScheduleGenerator;
 
     @Test
-    @DisplayName("2명의 학생에 대해 주간 스케줄을 생성하면 24개가 저장된다")
+    @DisplayName("2명의 학생에 대해 주간 스케줄을 생성하면 30개가 저장된다")
     void shouldSave24SchedulesForTwoStudents() {
         // Given: 2명의 학생과 월요일 baseDate
         LocalDate today = LocalDate.now();
@@ -50,16 +50,16 @@ class StudentScheduleGeneratorTest {
         // When: 스케줄 생성
         studentScheduleGenerator.createStudentScheduleByStudents(List.of(student1, student2), nextMonday);
 
-        // Then: 2명 * 4일(월~목) * 3교시 = 24개
+        // Then: 2명 * 5일(월~금) * 3교시 = 30개
         ArgumentCaptor<List<StudentScheduleEntity>> captor = ArgumentCaptor.forClass(List.class);
         verify(studentScheduleRepository).saveAll(captor.capture());
 
         List<StudentScheduleEntity> savedSchedules = captor.getValue();
-        assertThat(savedSchedules).hasSize(24);
+        assertThat(savedSchedules).hasSize(30);
     }
 
     @Test
-    @DisplayName("생성된 스케줄은 baseDate가 월요일이면 월요일부터 목요일까지여야 한다")
+    @DisplayName("생성된 스케줄은 baseDate가 월요일이면 월요일부터 금요일까지여야 한다")
     void shouldCreateSchedulesForMondayToThursday() {
         // Given: 1명의 학생과 월요일 baseDate
         LocalDate today = LocalDate.now();
@@ -67,19 +67,20 @@ class StudentScheduleGeneratorTest {
         LocalDate nextTuesday = nextMonday.plusDays(1);
         LocalDate nextWednesday = nextMonday.plusDays(2);
         LocalDate nextThursday = nextMonday.plusDays(3);
+        LocalDate nextFriday = nextMonday.plusDays(4);
 
         StudentEntity student = createMockStudent(1L);
 
         // When
         studentScheduleGenerator.createStudentScheduleByStudents(List.of(student), nextMonday);
 
-        // Then: 날짜는 월~목만 포함
+        // Then: 날짜는 월~금만 포함
         ArgumentCaptor<List<StudentScheduleEntity>> captor = ArgumentCaptor.forClass(List.class);
         verify(studentScheduleRepository).saveAll(captor.capture());
 
         assertThat(captor.getValue())
                 .extracting(StudentScheduleEntity::getDay)
-                .containsOnly(nextMonday, nextTuesday, nextWednesday, nextThursday);
+                .containsOnly(nextMonday, nextTuesday, nextWednesday, nextThursday, nextFriday);
     }
 
     @Test
@@ -122,23 +123,24 @@ class StudentScheduleGeneratorTest {
     }
 
     @Test
-    @DisplayName("baseDate가 수요일이면 수요일부터 목요일까지만 생성된다")
+    @DisplayName("baseDate가 수요일이면 수요일부터 금요일까지만 생성된다")
     void shouldCreateSchedulesOnlyFromBaseDate() {
         // Given: 1명의 학생, baseDate = 수요일
         LocalDate nextWednesday = LocalDate.now().plusWeeks(1).with(DayOfWeek.WEDNESDAY);
         LocalDate nextThursday = nextWednesday.plusDays(1);
+        LocalDate nextFriday = nextWednesday.plusDays(2);
         StudentEntity student = createMockStudent(1L);
 
         // When
         studentScheduleGenerator.createStudentScheduleByStudents(List.of(student), nextWednesday);
 
-        // Then: 수요일, 목요일만 포함
+        // Then: 수요일, 목요일, 금요일만 포함
         ArgumentCaptor<List<StudentScheduleEntity>> captor = ArgumentCaptor.forClass(List.class);
         verify(studentScheduleRepository).saveAll(captor.capture());
 
         assertThat(captor.getValue())
                 .extracting(StudentScheduleEntity::getDay)
-                .containsOnly(nextWednesday, nextThursday);
+                .containsOnly(nextWednesday, nextThursday, nextFriday);
     }
 
     @Test
