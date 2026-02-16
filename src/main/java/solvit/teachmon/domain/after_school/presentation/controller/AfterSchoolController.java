@@ -5,14 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import jakarta.validation.constraints.NotNull;
 import solvit.teachmon.domain.after_school.application.service.AfterSchoolService;
 import solvit.teachmon.domain.after_school.presentation.dto.request.AfterSchoolBusinessTripRequestDto;
@@ -22,10 +15,7 @@ import solvit.teachmon.domain.after_school.presentation.dto.request.AfterSchoolR
 import solvit.teachmon.domain.after_school.presentation.dto.request.AfterSchoolRequestDto;
 import solvit.teachmon.domain.after_school.presentation.dto.request.AfterSchoolSearchRequestDto;
 import solvit.teachmon.domain.after_school.presentation.dto.request.AfterSchoolUpdateRequestDto;
-import solvit.teachmon.domain.after_school.presentation.dto.response.AfterSchoolResponseDto;
-import solvit.teachmon.domain.after_school.presentation.dto.response.AfterSchoolMyResponseDto;
-import solvit.teachmon.domain.after_school.presentation.dto.response.AfterSchoolByTeacherResponseDto;
-import solvit.teachmon.domain.after_school.presentation.dto.response.AfterSchoolTodayResponseDto;
+import solvit.teachmon.domain.after_school.presentation.dto.response.*;
 import solvit.teachmon.global.enums.WeekDay;
 import solvit.teachmon.global.security.user.TeachmonUserDetails;
 
@@ -98,6 +88,11 @@ public class AfterSchoolController {
     public ResponseEntity<Void> quitAfterSchool(@Valid @RequestBody AfterSchoolRequestDto requestDto) {
         afterSchoolService.quitAfterSchool(requestDto.afterSchoolId());
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/business-trip/affordable/{after_school_id}")
+    public ResponseEntity<AfterSchoolAffordableBusinessResponseDto> getAffordableAfterSchool(@PathVariable("after_school_id") Long afterSchoolId) {
+        return ResponseEntity.ok(afterSchoolService.getBusinessTrip(afterSchoolId));
     }
 
     @PostMapping("/business-trip")
