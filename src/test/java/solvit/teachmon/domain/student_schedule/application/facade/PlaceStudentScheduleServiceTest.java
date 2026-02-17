@@ -95,13 +95,14 @@ class PlaceStudentScheduleServiceTest {
         Map<Integer, Long> additionalSelfStudyCountMap = Map.of(2, 2L, 3, 4L);
         Map<Integer, Long> leaveSeatCountMap = Map.of(1, 1L);
         Map<Integer, Long> afterSchoolCountMap = Map.of(3, 2L);
+        Map<Integer, Long> afterSchoolReinforcementCountMap = Map.of(1, 2L, 3, 1L);
 
         FloorStateResponse floor1Response = FloorStateResponse.builder()
-                .floor(1).count(6L).build();
+                .floor(1).count(8L).build();
         FloorStateResponse floor2Response = FloorStateResponse.builder()
                 .floor(2).count(5L).build();
         FloorStateResponse floor3Response = FloorStateResponse.builder()
-                .floor(3).count(6L).build();
+                .floor(3).count(7L).build();
 
         given(studentScheduleRepository.findPlaceBasedSchedulesByDayAndPeriodAndTypeIn(eq(day), eq(period), anyList()))
                 .willReturn(placeFillScheduleMap);
@@ -113,6 +114,8 @@ class PlaceStudentScheduleServiceTest {
                 .willReturn(leaveSeatCountMap);
         given(afterSchoolScheduleRepository.getAfterSchoolPlaceCount(List.of(afterSchoolSchedule)))
                 .willReturn(afterSchoolCountMap);
+        given(afterSchoolScheduleRepository.getAfterSchoolReinforcementPlaceCount(List.of()))
+                .willReturn(afterSchoolReinforcementCountMap);
         given(placeStudentScheduleMapper.toFloorStateResponses(anyMap()))
                 .willReturn(List.of(floor1Response, floor2Response, floor3Response));
 
@@ -134,6 +137,8 @@ class PlaceStudentScheduleServiceTest {
                 .getLeaveSeatPlaceCount(List.of(leaveSeatSchedule));
         verify(afterSchoolScheduleRepository, times(1))
                 .getAfterSchoolPlaceCount(List.of(afterSchoolSchedule));
+        verify(afterSchoolScheduleRepository, times(1))
+                .getAfterSchoolReinforcementPlaceCount(List.of());
         verify(placeStudentScheduleMapper, times(1))
                 .toFloorStateResponses(anyMap());
     }
@@ -158,6 +163,7 @@ class PlaceStudentScheduleServiceTest {
         given(additionalSelfStudyScheduleRepository.getAdditionalSelfStudyPlaceCount(List.of())).willReturn(Map.of());
         given(leaveSeatScheduleRepository.getLeaveSeatPlaceCount(List.of())).willReturn(Map.of());
         given(afterSchoolScheduleRepository.getAfterSchoolPlaceCount(List.of())).willReturn(Map.of());
+        given(afterSchoolScheduleRepository.getAfterSchoolReinforcementPlaceCount(List.of())).willReturn(Map.of());
         given(placeStudentScheduleMapper.toFloorStateResponses(anyMap())).willReturn(List.of());
 
         // When: 모든 층의 장소 사용 인원을 조회하면
@@ -209,6 +215,8 @@ class PlaceStudentScheduleServiceTest {
                 .willReturn(List.of());
         given(afterSchoolScheduleRepository.getPlaceScheduleByFloor(List.of(), floor))
                 .willReturn(List.of());
+        given(afterSchoolScheduleRepository.getReinforcementPlaceScheduleByFloor(List.of(), floor))
+                .willReturn(List.of());
         given(placeStudentScheduleMapper.toPlaceStateResponses(anyList()))
                 .willReturn(List.of(placeState1, placeState2));
 
@@ -251,6 +259,7 @@ class PlaceStudentScheduleServiceTest {
         given(additionalSelfStudyScheduleRepository.getPlaceScheduleByFloor(List.of(), floor)).willReturn(List.of());
         given(leaveSeatScheduleRepository.getPlaceScheduleByFloor(List.of(), floor)).willReturn(List.of());
         given(afterSchoolScheduleRepository.getPlaceScheduleByFloor(List.of(), floor)).willReturn(List.of());
+        given(afterSchoolScheduleRepository.getReinforcementPlaceScheduleByFloor(List.of(), floor)).willReturn(List.of());
         given(placeStudentScheduleMapper.toPlaceStateResponses(anyList())).willReturn(List.of());
 
         // When: 특정 층의 장소 상태를 조회하면
@@ -304,6 +313,8 @@ class PlaceStudentScheduleServiceTest {
                 .willReturn(List.of());
         given(afterSchoolScheduleRepository.getStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period))
                 .willReturn(List.of());
+        given(afterSchoolScheduleRepository.getReinforcementStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period))
+                .willReturn(List.of());
         lenient().when(studentScheduleMapper.toStudentScheduleResponse(student1)).thenReturn(studentResponse1);
         lenient().when(studentScheduleMapper.toStudentScheduleResponse(student2)).thenReturn(studentResponse2);
         given(placeStudentScheduleMapper.toPlaceStudentScheduleResponse(eq(place), anyList()))
@@ -327,6 +338,8 @@ class PlaceStudentScheduleServiceTest {
                 .getStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period);
         verify(afterSchoolScheduleRepository, times(1))
                 .getStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period);
+        verify(afterSchoolScheduleRepository, times(1))
+                .getReinforcementStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period);
         verify(placeStudentScheduleMapper, times(1))
                 .toPlaceStudentScheduleResponse(eq(place), anyList());
     }
@@ -376,6 +389,8 @@ class PlaceStudentScheduleServiceTest {
         given(leaveSeatScheduleRepository.getStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period))
                 .willReturn(List.of());
         given(afterSchoolScheduleRepository.getStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period))
+                .willReturn(List.of());
+        given(afterSchoolScheduleRepository.getReinforcementStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period))
                 .willReturn(List.of());
         given(placeStudentScheduleMapper.toPlaceStudentScheduleResponse(eq(place), eq(List.of())))
                 .willReturn(expectedResponse);
@@ -445,6 +460,8 @@ class PlaceStudentScheduleServiceTest {
                 .willReturn(List.of(leaveSeatStudent));
         given(afterSchoolScheduleRepository.getStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period))
                 .willReturn(List.of(afterSchoolStudent));
+        given(afterSchoolScheduleRepository.getReinforcementStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period))
+                .willReturn(List.of());
         lenient().when(studentScheduleMapper.toStudentScheduleResponse(selfStudyStudent)).thenReturn(response1);
         lenient().when(studentScheduleMapper.toStudentScheduleResponse(additionalSelfStudyStudent)).thenReturn(response2);
         lenient().when(studentScheduleMapper.toStudentScheduleResponse(leaveSeatStudent)).thenReturn(response3);
@@ -475,5 +492,151 @@ class PlaceStudentScheduleServiceTest {
                 .getStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period);
         verify(afterSchoolScheduleRepository, times(1))
                 .getStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period);
+        verify(afterSchoolScheduleRepository, times(1))
+                .getReinforcementStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period);
+    }
+
+    @Test
+    @DisplayName("방과후 보강 스케줄이 층별 장소 사용 인원에 포함된다")
+    void shouldIncludeReinforcementScheduleInFloorCount() {
+        // Given: 방과후 보강 스케줄이 있는 날짜와 교시가 주어졌을 때
+        LocalDate day = LocalDate.of(2024, 1, 15);
+        SchoolPeriod period = SchoolPeriod.ONE_PERIOD;
+
+        ScheduleEntity reinforcementSchedule = mock(ScheduleEntity.class);
+
+        Map<ScheduleType, List<ScheduleEntity>> placeFillScheduleMap = Map.of(
+                ScheduleType.SELF_STUDY, List.of(),
+                ScheduleType.ADDITIONAL_SELF_STUDY, List.of(),
+                ScheduleType.LEAVE_SEAT, List.of(),
+                ScheduleType.AFTER_SCHOOL, List.of(),
+                ScheduleType.AFTER_SCHOOL_REINFORCEMENT, List.of(reinforcementSchedule)
+        );
+
+        Map<Integer, Long> reinforcementCountMap = Map.of(2, 3L, 3, 2L);
+
+        FloorStateResponse floor2Response = FloorStateResponse.builder()
+                .floor(2).count(3L).build();
+        FloorStateResponse floor3Response = FloorStateResponse.builder()
+                .floor(3).count(2L).build();
+
+        given(studentScheduleRepository.findPlaceBasedSchedulesByDayAndPeriodAndTypeIn(eq(day), eq(period), anyList()))
+                .willReturn(placeFillScheduleMap);
+        given(selfStudyScheduleRepository.getSelfStudyPlaceCount(List.of())).willReturn(Map.of());
+        given(additionalSelfStudyScheduleRepository.getAdditionalSelfStudyPlaceCount(List.of())).willReturn(Map.of());
+        given(leaveSeatScheduleRepository.getLeaveSeatPlaceCount(List.of())).willReturn(Map.of());
+        given(afterSchoolScheduleRepository.getAfterSchoolPlaceCount(List.of())).willReturn(Map.of());
+        given(afterSchoolScheduleRepository.getAfterSchoolReinforcementPlaceCount(List.of(reinforcementSchedule)))
+                .willReturn(reinforcementCountMap);
+        given(placeStudentScheduleMapper.toFloorStateResponses(anyMap()))
+                .willReturn(List.of(floor2Response, floor3Response));
+
+        // When: 모든 층의 장소 사용 인원을 조회하면
+        List<FloorStateResponse> result = placeStudentScheduleService.getAllFloorsPlaceCount(day, period);
+
+        // Then: 방과후 보강 스케줄이 포함된 결과가 반환된다
+        assertThat(result).hasSize(2);
+
+        verify(afterSchoolScheduleRepository, times(1))
+                .getAfterSchoolReinforcementPlaceCount(List.of(reinforcementSchedule));
+    }
+
+    @Test
+    @DisplayName("방과후 보강 장소가 특정 층의 장소 상태 조회에 포함된다")
+    void shouldIncludeReinforcementPlaceInFloorState() {
+        // Given: 방과후 보강이 있는 층, 날짜, 교시가 주어졌을 때
+        Integer floor = 2;
+        LocalDate day = LocalDate.of(2024, 1, 15);
+        SchoolPeriod period = SchoolPeriod.ONE_PERIOD;
+
+        ScheduleEntity reinforcementSchedule = mock(ScheduleEntity.class);
+
+        Map<ScheduleType, List<ScheduleEntity>> placeFillScheduleMap = Map.of(
+                ScheduleType.SELF_STUDY, List.of(),
+                ScheduleType.ADDITIONAL_SELF_STUDY, List.of(),
+                ScheduleType.LEAVE_SEAT, List.of(),
+                ScheduleType.AFTER_SCHOOL, List.of(),
+                ScheduleType.AFTER_SCHOOL_REINFORCEMENT, List.of(reinforcementSchedule)
+        );
+
+        PlaceEntity reinforcementPlace = mock(PlaceEntity.class);
+        PlaceScheduleDto reinforcementPlaceSchedule = new PlaceScheduleDto(reinforcementPlace, ScheduleType.AFTER_SCHOOL_REINFORCEMENT);
+
+        PlaceStateResponse placeState = PlaceStateResponse.builder()
+                .placeId(1L).placeName("2층 보강실").state(ScheduleType.AFTER_SCHOOL_REINFORCEMENT).build();
+
+        given(studentScheduleRepository.findPlaceBasedSchedulesByDayAndPeriodAndTypeIn(eq(day), eq(period), anyList()))
+                .willReturn(placeFillScheduleMap);
+        given(selfStudyScheduleRepository.getPlaceScheduleByFloor(List.of(), floor)).willReturn(List.of());
+        given(additionalSelfStudyScheduleRepository.getPlaceScheduleByFloor(List.of(), floor)).willReturn(List.of());
+        given(leaveSeatScheduleRepository.getPlaceScheduleByFloor(List.of(), floor)).willReturn(List.of());
+        given(afterSchoolScheduleRepository.getPlaceScheduleByFloor(List.of(), floor)).willReturn(List.of());
+        given(afterSchoolScheduleRepository.getReinforcementPlaceScheduleByFloor(List.of(reinforcementSchedule), floor))
+                .willReturn(List.of(reinforcementPlaceSchedule));
+        given(placeStudentScheduleMapper.toPlaceStateResponses(anyList()))
+                .willReturn(List.of(placeState));
+
+        // When: 특정 층의 장소 상태를 조회하면
+        List<PlaceStateResponse> result = placeStudentScheduleService.getPlaceStatesByFloor(floor, day, period);
+
+        // Then: 방과후 보강 장소가 포함된 결과가 반환된다
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).state()).isEqualTo(ScheduleType.AFTER_SCHOOL_REINFORCEMENT);
+
+        verify(afterSchoolScheduleRepository, times(1))
+                .getReinforcementPlaceScheduleByFloor(List.of(reinforcementSchedule), floor);
+    }
+
+    @Test
+    @DisplayName("방과후 보강 학생이 특정 장소의 학생 스케줄 조회에 포함된다")
+    void shouldIncludeReinforcementStudentInPlaceSchedule() {
+        // Given: 방과후 보강 학생이 있는 장소 ID가 주어졌을 때
+        Long placeId = 1L;
+        LocalDate day = LocalDate.of(2024, 1, 15);
+        SchoolPeriod period = SchoolPeriod.ONE_PERIOD;
+
+        PlaceEntity place = mock(PlaceEntity.class);
+        lenient().when(place.getId()).thenReturn(placeId);
+        lenient().when(place.getName()).thenReturn("보강실");
+
+        StudentScheduleDto reinforcementStudent = new StudentScheduleDto(
+                1L, 1, 1, 1, "김보강", day, period, 10L, ScheduleType.AFTER_SCHOOL_REINFORCEMENT
+        );
+
+        StudentScheduleResponse reinforcementResponse = StudentScheduleResponse.builder()
+                .studentId(1L).number(1).name("김보강")
+                .state(ScheduleType.AFTER_SCHOOL_REINFORCEMENT).scheduleId(10L).build();
+
+        PlaceStudentScheduleResponse expectedResponse = PlaceStudentScheduleResponse.builder()
+                .placeId(placeId)
+                .placeName("보강실")
+                .students(List.of(reinforcementResponse))
+                .build();
+
+        given(placeRepository.findById(placeId)).willReturn(Optional.of(place));
+        given(selfStudyScheduleRepository.getStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period))
+                .willReturn(List.of());
+        given(additionalSelfStudyScheduleRepository.getStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period))
+                .willReturn(List.of());
+        given(leaveSeatScheduleRepository.getStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period))
+                .willReturn(List.of());
+        given(afterSchoolScheduleRepository.getStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period))
+                .willReturn(List.of());
+        given(afterSchoolScheduleRepository.getReinforcementStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period))
+                .willReturn(List.of(reinforcementStudent));
+        lenient().when(studentScheduleMapper.toStudentScheduleResponse(reinforcementStudent)).thenReturn(reinforcementResponse);
+        given(placeStudentScheduleMapper.toPlaceStudentScheduleResponse(eq(place), anyList()))
+                .willReturn(expectedResponse);
+
+        // When: 특정 장소의 학생 스케줄을 조회하면
+        PlaceStudentScheduleResponse result = placeStudentScheduleService.getStudentsByPlaceId(placeId, day, period);
+
+        // Then: 방과후 보강 학생이 포함된 결과가 반환된다
+        assertThat(result).isNotNull();
+        assertThat(result.students()).hasSize(1);
+        assertThat(result.students().get(0).state()).isEqualTo(ScheduleType.AFTER_SCHOOL_REINFORCEMENT);
+
+        verify(afterSchoolScheduleRepository, times(1))
+                .getReinforcementStudentScheduleByPlaceAndDayAndPeriod(placeId, day, period);
     }
 }

@@ -44,7 +44,8 @@ public class PlaceStudentScheduleService {
             ScheduleType.SELF_STUDY,
             ScheduleType.ADDITIONAL_SELF_STUDY,
             ScheduleType.LEAVE_SEAT,
-            ScheduleType.AFTER_SCHOOL
+            ScheduleType.AFTER_SCHOOL,
+            ScheduleType.AFTER_SCHOOL_REINFORCEMENT
     );
 
     @Transactional(readOnly = true)
