@@ -280,6 +280,7 @@ public class AfterSchoolService {
         for(LocalDate day = startDay; day.isBefore(afterSchoolEndDay); day = day.plusDays(1)) {
             DayOfWeek dayOfWeek = afterSchool.getWeekDay().toDayOfWeek();
             if(!day.getDayOfWeek().equals(dayOfWeek)) continue;
+            if(!afterSchoolBusinessTripRepository.existsByAfterSchoolAndDay(afterSchool, day)) continue;
             localDates.add(day);
         }
         return AfterSchoolAffordableBusinessResponseDto.builder()
