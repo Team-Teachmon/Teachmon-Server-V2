@@ -25,6 +25,7 @@ import solvit.teachmon.domain.user.domain.repository.TeacherRepository;
 import solvit.teachmon.global.enums.WeekDay;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -134,6 +135,11 @@ class AfterSchoolServiceBusinessTripTest {
         given(afterSchoolRepository.findWithAllRelations(afterSchoolId))
                 .willReturn(Optional.of(afterSchool));
         given(afterSchool.getWeekDay()).willReturn(WeekDay.MON);
+        
+        // 배치 쿼리로 빈 목록 반환 (출장이 없음을 의미)
+        given(afterSchoolBusinessTripRepository.findBusinessTripDatesByAfterSchoolAndDateRange(
+                eq(afterSchool), eq(startDay), eq(afterSchoolEndDay)))
+                .willReturn(List.of());
 
         // When
         AfterSchoolAffordableBusinessResponseDto result = afterSchoolService.getBusinessTrip(afterSchoolId);
@@ -155,6 +161,8 @@ class AfterSchoolServiceBusinessTripTest {
 
         verify(branchRepository).findCurrentBranch(any(LocalDate.class));
         verify(afterSchoolRepository).findWithAllRelations(afterSchoolId);
+        verify(afterSchoolBusinessTripRepository).findBusinessTripDatesByAfterSchoolAndDateRange(
+                eq(afterSchool), eq(startDay), eq(afterSchoolEndDay));
     }
 
     @Test
@@ -209,6 +217,11 @@ class AfterSchoolServiceBusinessTripTest {
         given(afterSchoolRepository.findWithAllRelations(afterSchoolId))
                 .willReturn(Optional.of(afterSchool));
         given(afterSchool.getWeekDay()).willReturn(WeekDay.TUE);
+        
+        // 배치 쿼리로 빈 목록 반환 (출장이 없음을 의미)
+        given(afterSchoolBusinessTripRepository.findBusinessTripDatesByAfterSchoolAndDateRange(
+                eq(afterSchool), eq(startDay), eq(afterSchoolEndDay)))
+                .willReturn(List.of());
 
         // When
         AfterSchoolAffordableBusinessResponseDto result = afterSchoolService.getBusinessTrip(afterSchoolId);
@@ -245,12 +258,10 @@ class AfterSchoolServiceBusinessTripTest {
                 .willReturn(Optional.of(afterSchool));
         given(afterSchool.getWeekDay()).willReturn(WeekDay.MON);
         
-        // 기본적으로 모든 날짜에 대해 출장이 등록되지 않았다고 설정
-        given(afterSchoolBusinessTripRepository.existsByAfterSchoolAndDay(eq(afterSchool), any(LocalDate.class)))
-                .willReturn(false);
-        // 특정 날짜에만 이미 출장이 등록되어 있다고 설정
-        given(afterSchoolBusinessTripRepository.existsByAfterSchoolAndDay(afterSchool, existingBusinessTripDate))
-                .willReturn(true);
+        // 배치 쿼리로 이미 등록된 출장 날짜 목록 반환
+        given(afterSchoolBusinessTripRepository.findBusinessTripDatesByAfterSchoolAndDateRange(
+                eq(afterSchool), eq(startDay), eq(afterSchoolEndDay)))
+                .willReturn(List.of(existingBusinessTripDate));
 
         // When
         AfterSchoolAffordableBusinessResponseDto result = afterSchoolService.getBusinessTrip(afterSchoolId);
@@ -269,5 +280,7 @@ class AfterSchoolServiceBusinessTripTest {
 
         verify(branchRepository).findCurrentBranch(any(LocalDate.class));
         verify(afterSchoolRepository).findWithAllRelations(afterSchoolId);
+        verify(afterSchoolBusinessTripRepository).findBusinessTripDatesByAfterSchoolAndDateRange(
+                eq(afterSchool), eq(startDay), eq(afterSchoolEndDay));
     }
 }
