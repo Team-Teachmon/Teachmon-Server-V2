@@ -1,6 +1,5 @@
 package solvit.teachmon.domain.user.domain.repository.querydsl.impl;
 
-import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -41,18 +40,13 @@ public class TeacherViewQueryDslRepositoryImpl implements TeacherQueryDslReposit
             return List.of();
         }
 
-        BooleanBuilder builder = new BooleanBuilder();
-        
-        builder.or(QTeacherEntity.teacherEntity.name.like("%" + keyword + "%"));
-        
         return queryFactory.select(
-                new QTeacherSearchResponseDto(
-                        QTeacherEntity.teacherEntity.id,
-                        QTeacherEntity.teacherEntity.name
-                )
-        )
-        .from(QTeacherEntity.teacherEntity)
-        .where(builder)
-        .fetch();
+                        new QTeacherSearchResponseDto(
+                                QTeacherEntity.teacherEntity.id,
+                                QTeacherEntity.teacherEntity.name
+                        ))
+                .from(QTeacherEntity.teacherEntity)
+                .where(QTeacherEntity.teacherEntity.name.like("%" + keyword + "%"))
+                .fetch();
     }
 }
