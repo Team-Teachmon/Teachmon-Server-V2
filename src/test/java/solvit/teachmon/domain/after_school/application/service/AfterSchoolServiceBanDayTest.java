@@ -22,6 +22,8 @@ import solvit.teachmon.domain.management.teacher.domain.entity.SupervisionBanDay
 import solvit.teachmon.domain.management.teacher.domain.repository.SupervisionBanDayRepository;
 import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
 import solvit.teachmon.domain.place.domain.repository.PlaceRepository;
+import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
+import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
 import solvit.teachmon.domain.user.domain.entity.TeacherEntity;
 import solvit.teachmon.domain.user.domain.repository.TeacherRepository;
 import solvit.teachmon.global.enums.SchoolPeriod;
@@ -61,6 +63,10 @@ class AfterSchoolServiceBanDayTest {
     private PlaceRepository placeRepository;
     @Mock
     private AfterSchoolScheduleService afterSchoolScheduleService;
+    @Mock
+    private StudentScheduleRepository studentScheduleRepository;
+    @Mock
+    private ScheduleRepository scheduleRepository;
 
     private AfterSchoolService afterSchoolService;
 
@@ -76,6 +82,8 @@ class AfterSchoolServiceBanDayTest {
                 studentRepository,
                 branchRepository,
                 placeRepository,
+                studentScheduleRepository,
+                scheduleRepository,
                 afterSchoolScheduleService
         );
     }

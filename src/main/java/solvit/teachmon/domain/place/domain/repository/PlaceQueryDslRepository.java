@@ -12,4 +12,5 @@ public interface PlaceQueryDslRepository {
     Map<Integer, PlaceEntity> findAllByGradePrefix(Integer grade);
     Boolean checkPlaceAvailability(LocalDate day, SchoolPeriod period, PlaceEntity place);
     List<PlaceSearchResponseDto> searchPlacesByKeyword(String keyword);
+    Boolean existAfterSchoolPlaceByDayAndPeriodAndPlace(LocalDate day, SchoolPeriod period, PlaceEntity place);
 }

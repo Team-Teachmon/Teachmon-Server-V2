@@ -22,6 +22,7 @@ public interface StudentScheduleRepository extends JpaRepository<StudentSchedule
     @Query("""
     SELECT s
     FROM StudentScheduleEntity s
+    JOIN FETCH s.student
     WHERE s.student.grade = :grade
       AND s.day = :day
       AND s.period = :period
@@ -34,7 +35,9 @@ public interface StudentScheduleRepository extends JpaRepository<StudentSchedule
 
     @Query("""
     SELECT s
-    FROM StudentScheduleEntity s INNER JOIN FixedLeaveSeatStudentEntity f ON s.student = f.student
+    FROM StudentScheduleEntity s
+    JOIN FETCH s.student
+    INNER JOIN FixedLeaveSeatStudentEntity f ON s.student = f.student
     WHERE f.fixedLeaveSeat = :fixedLeaveSeat
       AND s.day = :day
       AND s.period = :period
@@ -47,7 +50,9 @@ public interface StudentScheduleRepository extends JpaRepository<StudentSchedule
 
     @Query("""
     SELECT s
-    FROM StudentScheduleEntity s INNER JOIN AfterSchoolStudentEntity a ON s.student = a.student
+    FROM StudentScheduleEntity s
+    JOIN FETCH s.student
+    INNER JOIN AfterSchoolStudentEntity a ON s.student = a.student
     WHERE a.afterSchool = :afterSchool
       AND s.day = :day
       AND s.period = :period
@@ -58,13 +63,13 @@ public interface StudentScheduleRepository extends JpaRepository<StudentSchedule
             @Param("period") SchoolPeriod period
     );
 
-    @Query("SELECT s FROM StudentScheduleEntity s WHERE s.day BETWEEN :startDay AND :endDay")
+    @Query("SELECT s FROM StudentScheduleEntity s JOIN FETCH s.student WHERE s.day BETWEEN :startDay AND :endDay")
     List<StudentScheduleEntity> findAllByDayBetween(
             @Param("startDay") LocalDate startDay,
             @Param("endDay") LocalDate endDay
     );
 
-    @Query("SELECT s FROM StudentScheduleEntity s WHERE s.student = :student AND s.day = :day AND s.period = :period")
+    @Query("SELECT s FROM StudentScheduleEntity s JOIN FETCH s.student WHERE s.student = :student AND s.day = :day AND s.period = :period")
     Optional<StudentScheduleEntity> findByStudentAndDayAndPeriod(
             @Param("student") StudentEntity student,
             @Param("day") LocalDate day,
