@@ -180,6 +180,7 @@ public class AfterSchoolScheduleQueryDslRepositoryImpl implements AfterSchoolSch
     @Override
     public List<StudentScheduleDto> getReinforcementStudentScheduleByPlaceAndDayAndPeriod(Long placeId, LocalDate day, SchoolPeriod period) {
         QAfterSchoolReinforcementEntity afterSchoolReinforcement = QAfterSchoolReinforcementEntity.afterSchoolReinforcementEntity;
+        QAfterSchoolScheduleEntity afterSchoolSchedule = QAfterSchoolScheduleEntity.afterSchoolScheduleEntity;
         QScheduleEntity schedule = QScheduleEntity.scheduleEntity;
         QStudentScheduleEntity studentSchedule = QStudentScheduleEntity.studentScheduleEntity;
         QStudentEntity student = QStudentEntity.studentEntity;
@@ -200,14 +201,12 @@ public class AfterSchoolScheduleQueryDslRepositoryImpl implements AfterSchoolSch
                         scheduleMax.type
                 ))
                 .from(afterSchoolReinforcement)
-                .join(studentSchedule).on(
-                        studentSchedule.day.eq(afterSchoolReinforcement.changeDay)
-                                .and(studentSchedule.period.eq(afterSchoolReinforcement.changePeriod))
-                )
+                .join(afterSchoolSchedule).on(afterSchoolSchedule.afterSchool.id.eq(afterSchoolReinforcement.afterSchool.id))
                 .join(schedule).on(
-                        schedule.studentSchedule.id.eq(studentSchedule.id)
+                        afterSchoolSchedule.schedule.id.eq(schedule.id)
                                 .and(schedule.type.eq(ScheduleType.AFTER_SCHOOL_REINFORCEMENT))
                 )
+                .join(schedule.studentSchedule, studentSchedule)
                 .join(studentSchedule.student, student)
                 // 최신 스케줄 조인 (EXIT/AWAY 정보 표시용)
                 .join(scheduleMax).on(
@@ -221,6 +220,8 @@ public class AfterSchoolScheduleQueryDslRepositoryImpl implements AfterSchoolSch
                 )
                 .where(
                         afterSchoolReinforcement.place.id.eq(placeId),
+                        afterSchoolReinforcement.changeDay.eq(day),
+                        afterSchoolReinforcement.changePeriod.eq(period),
                         studentSchedule.day.eq(day),
                         studentSchedule.period.eq(period),
                         // 케이스 1: 최신 스케줄이 방과후인 경우
