@@ -2,6 +2,7 @@ package solvit.teachmon.domain.user.domain.repository.querydsl.impl;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 import solvit.teachmon.domain.user.domain.entity.QTeacherEntity;
 import solvit.teachmon.domain.user.domain.repository.querydsl.TeacherQueryDslRepository;
@@ -13,6 +14,7 @@ import solvit.teachmon.domain.user.presentation.dto.response.TeacherSearchRespon
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class TeacherViewQueryDslRepositoryImpl implements TeacherQueryDslRepository {
@@ -36,9 +38,11 @@ public class TeacherViewQueryDslRepositoryImpl implements TeacherQueryDslReposit
 
     @Override
     public List<TeacherSearchResponseDto> queryTeachersByName(String keyword) {
+        log.info("repo1" + keyword);
         if (keyword == null || keyword.trim().isEmpty()) {
             return List.of();
         }
+        log.info("repo2" + keyword);
 
         return queryFactory.select(
                         new QTeacherSearchResponseDto(
@@ -46,7 +50,7 @@ public class TeacherViewQueryDslRepositoryImpl implements TeacherQueryDslReposit
                                 QTeacherEntity.teacherEntity.name
                         ))
                 .from(QTeacherEntity.teacherEntity)
-                .where(QTeacherEntity.teacherEntity.name.like("%" + keyword + "%"))
+                .where(QTeacherEntity.teacherEntity.name.contains(keyword))
                 .fetch();
     }
 }
