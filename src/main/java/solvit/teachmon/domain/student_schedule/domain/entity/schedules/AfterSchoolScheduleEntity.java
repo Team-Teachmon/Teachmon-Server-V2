@@ -5,7 +5,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.http.HttpStatus;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
@@ -39,8 +38,9 @@ public class AfterSchoolScheduleEntity extends BaseEntity {
         if (schedule == null) {
             throw new AfterSchoolScheduleValueInvalidException("schedule(스케줄)은 필수입니다.");
         }
-        if (!ScheduleType.AFTER_SCHOOL.equals(schedule.getType())) {
-            throw new AfterSchoolScheduleValueInvalidException("schedule(스케줄)의 타입은 방과후여야 합니다.");
+        if (!ScheduleType.AFTER_SCHOOL.equals(schedule.getType())
+                && !ScheduleType.AFTER_SCHOOL_REINFORCEMENT.equals(schedule.getType())) {
+            throw new AfterSchoolScheduleValueInvalidException("schedule(스케줄)의 타입은 방과후 또는 방과후 보강이어야 합니다.");
         }
     }
 
