@@ -6,12 +6,14 @@ import org.springframework.transaction.annotation.Transactional;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolBusinessTripEntity;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolEntity;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolReinforcementEntity;
+import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolStudentEntity;
 import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolBusinessTripRepository;
 import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolReinforcementRepository;
 import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolRepository;
 import solvit.teachmon.domain.after_school.domain.service.AfterSchoolStudentDomainService;
 import solvit.teachmon.domain.after_school.domain.vo.StudentAssignmentResultVo;
 import solvit.teachmon.domain.after_school.exception.AfterSchoolNotFoundException;
+import solvit.teachmon.domain.after_school.exception.AfterSchoolBusinessTripScheduleNotFoundException;
 import solvit.teachmon.domain.after_school.presentation.dto.response.*;
 import solvit.teachmon.domain.management.teacher.domain.entity.SupervisionBanDayEntity;
 import solvit.teachmon.domain.management.teacher.domain.repository.SupervisionBanDayRepository;
@@ -29,6 +31,11 @@ import solvit.teachmon.domain.management.student.domain.repository.StudentReposi
 import solvit.teachmon.domain.management.student.exception.StudentNotFoundException;
 import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
 import solvit.teachmon.domain.place.domain.repository.PlaceRepository;
+import solvit.teachmon.domain.student_schedule.domain.entity.StudentScheduleEntity;
+import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
+import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
+import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
+import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
 import solvit.teachmon.domain.user.domain.entity.TeacherEntity;
 import solvit.teachmon.domain.user.domain.repository.TeacherRepository;
 import solvit.teachmon.domain.user.exception.TeacherNotFoundException;
@@ -53,6 +60,8 @@ public class AfterSchoolService {
     private final StudentRepository studentRepository;
     private final BranchRepository branchRepository;
     private final PlaceRepository placeRepository;
+    private final StudentScheduleRepository studentScheduleRepository;
+    private final ScheduleRepository scheduleRepository;
     private final AfterSchoolScheduleService afterSchoolScheduleService;
 
     @Transactional
@@ -245,13 +254,19 @@ public class AfterSchoolService {
     @Transactional
     public void createBusinessTrip(AfterSchoolBusinessTripRequestDto requestDto) {
         AfterSchoolEntity afterSchool = getAfterSchoolById(requestDto.afterschoolId());
-        
+
         AfterSchoolBusinessTripEntity businessTrip = AfterSchoolBusinessTripEntity.builder()
                 .day(requestDto.day())
                 .afterSchool(afterSchool)
                 .build();
-        
+
         afterSchoolBusinessTripRepository.save(businessTrip);
+        
+        // 1. 출장 날짜가 이번주인지 검사
+        if (isDateInCurrentWeek(requestDto.day())) {
+            // 2. 이번주라면 해당 방과후를 듣는 학생들의 가장 최근 스케줄 삭제
+            deleteRecentAfterSchoolSchedules(afterSchool, requestDto.day());
+        }
     }
 
     @Transactional
@@ -267,6 +282,12 @@ public class AfterSchoolService {
                 .build();
         
         afterSchoolReinforcementRepository.save(reinforcement);
+        
+        // 1. 보강 날짜가 이번주인지 검사
+        if (isDateInCurrentWeek(requestDto.day())) {
+            // 2. 이번주라면 해당 방과후를 듣는 학생들에게 방과후 보강 스케줄 생성
+            createAfterSchoolReinforcementSchedules(afterSchool, requestDto.day(), requestDto.changePeriod());
+        }
     }
 
     @Transactional(readOnly = true)
@@ -286,4 +307,66 @@ public class AfterSchoolService {
                 .dates(localDates)
                 .build();
     }
+
+    private boolean isDateInCurrentWeek(LocalDate date) {
+        LocalDate today = LocalDate.now();
+        LocalDate startOfWeek = today.with(DayOfWeek.MONDAY);
+        LocalDate endOfWeek = today.with(DayOfWeek.SUNDAY);
+        
+        return !date.isBefore(startOfWeek) && !date.isAfter(endOfWeek);
+    }
+
+    private void deleteRecentAfterSchoolSchedules(AfterSchoolEntity afterSchool, LocalDate businessTripDay) {
+        // 해당 방과후를 듣는 학생들의 출장 날짜 StudentSchedule 조회
+        List<StudentScheduleEntity> afterSchoolSchedules = studentScheduleRepository
+                .findAllByAfterSchoolAndDayAndPeriod(afterSchool, businessTripDay, afterSchool.getPeriod());
+        
+        // N+1 문제 해결: 한 번의 쿼리로 모든 StudentSchedule의 최상위 Schedule 삭제
+        List<Long> studentScheduleIds = afterSchoolSchedules.stream()
+                .map(StudentScheduleEntity::getId)
+                .toList();
+        
+        if (studentScheduleIds.isEmpty()) {
+            throw new AfterSchoolBusinessTripScheduleNotFoundException(afterSchool.getName());
+        }
+
+        scheduleRepository.deleteTopSchedulesByStudentScheduleIds(studentScheduleIds);
+    }
+
+    private void createAfterSchoolReinforcementSchedules(
+            AfterSchoolEntity afterSchool, 
+            LocalDate reinforcementDay, 
+            SchoolPeriod reinforcementPeriod
+    ) {
+        // 해당 방과후를 듣는 모든 학생들을 가져와서 보강 스케줄 생성
+        List<StudentEntity> afterSchoolStudents = afterSchool.getAfterSchoolStudents().stream()
+                .map(AfterSchoolStudentEntity::getStudent)
+                .toList();
+
+        // N+1 문제 해결: Student Schedule 들을 일괄 생성
+        List<StudentScheduleEntity> reinforcementStudentSchedules = afterSchoolStudents.stream()
+                .map(student -> StudentScheduleEntity.builder()
+                        .student(student)
+                        .day(reinforcementDay)
+                        .period(reinforcementPeriod)
+                        .build())
+                .toList();
+
+        studentScheduleRepository.saveAll(reinforcementStudentSchedules);
+
+        // N+1 문제 해결: Schedule 들을 일괄 생성
+        List<ScheduleEntity> reinforcementSchedules = reinforcementStudentSchedules.stream()
+                .map(studentSchedule -> {
+                    Integer lastStackOrder = scheduleRepository.findLastStackOrderByStudentScheduleId(studentSchedule.getId());
+                    return ScheduleEntity.createNewStudentSchedule(
+                            studentSchedule,
+                            lastStackOrder,
+                            ScheduleType.AFTER_SCHOOL_REINFORCEMENT
+                    );
+                })
+                .toList();
+
+        scheduleRepository.saveAll(reinforcementSchedules);
+    }
+
 }

@@ -21,6 +21,8 @@ import solvit.teachmon.domain.management.teacher.domain.repository.SupervisionBa
 import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
 import solvit.teachmon.domain.place.domain.repository.PlaceRepository;
 import solvit.teachmon.domain.place.exception.PlaceNotFoundException;
+import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
+import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
 import solvit.teachmon.domain.user.domain.repository.TeacherRepository;
 import solvit.teachmon.global.enums.SchoolPeriod;
 
@@ -56,6 +58,10 @@ class AfterSchoolServiceReinforcementTest {
     private BranchRepository branchRepository;
     @Mock
     private PlaceRepository placeRepository;
+    @Mock
+    private StudentScheduleRepository studentScheduleRepository;
+    @Mock
+    private ScheduleRepository scheduleRepository;
 
     private AfterSchoolService afterSchoolService;
     private AfterSchoolEntity afterSchool;
@@ -74,6 +80,8 @@ class AfterSchoolServiceReinforcementTest {
                 studentRepository,
                 branchRepository,
                 placeRepository,
+                studentScheduleRepository,
+                scheduleRepository,
                 afterSchoolScheduleService
         );
 

@@ -12,6 +12,7 @@ import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolBusiness
 import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolReinforcementRepository;
 import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolRepository;
 import solvit.teachmon.domain.after_school.domain.service.AfterSchoolStudentDomainService;
+import solvit.teachmon.domain.after_school.exception.AfterSchoolBusinessTripScheduleNotFoundException;
 import solvit.teachmon.domain.after_school.exception.AfterSchoolNotFoundException;
 import solvit.teachmon.domain.after_school.presentation.dto.request.AfterSchoolBusinessTripRequestDto;
 import solvit.teachmon.domain.after_school.presentation.dto.response.AfterSchoolAffordableBusinessResponseDto;
@@ -21,10 +22,16 @@ import solvit.teachmon.domain.branch.exception.BranchNotFoundException;
 import solvit.teachmon.domain.management.student.domain.repository.StudentRepository;
 import solvit.teachmon.domain.management.teacher.domain.repository.SupervisionBanDayRepository;
 import solvit.teachmon.domain.place.domain.repository.PlaceRepository;
+import solvit.teachmon.domain.student_schedule.domain.entity.StudentScheduleEntity;
+import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
+import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
 import solvit.teachmon.domain.user.domain.repository.TeacherRepository;
+import solvit.teachmon.global.enums.SchoolPeriod;
 import solvit.teachmon.global.enums.WeekDay;
 
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -56,6 +63,10 @@ class AfterSchoolServiceBusinessTripTest {
     private BranchRepository branchRepository;
     @Mock
     private PlaceRepository placeRepository;
+    @Mock
+    private StudentScheduleRepository studentScheduleRepository;
+    @Mock
+    private ScheduleRepository scheduleRepository;
 
     private AfterSchoolService afterSchoolService;
     private AfterSchoolEntity afterSchool;
@@ -73,6 +84,8 @@ class AfterSchoolServiceBusinessTripTest {
                 studentRepository,
                 branchRepository,
                 placeRepository,
+                studentScheduleRepository,
+                scheduleRepository,
                 afterSchoolScheduleService
         );
 
@@ -224,5 +237,100 @@ class AfterSchoolServiceBusinessTripTest {
         
         // 첫 번째 날짜가 3월 4일(화요일)인지 확인
         assertThat(result.dates().get(0)).isEqualTo(LocalDate.of(2025, 3, 4));
+    }
+
+    @Test
+    @DisplayName("이번주 출장 등록 시 스케줄이 삭제된다")
+    void shouldDeleteSchedulesWhenBusinessTripIsCurrentWeek() {
+        // Given
+        LocalDate currentWeekDate = LocalDate.now();
+        AfterSchoolBusinessTripRequestDto currentWeekRequest = new AfterSchoolBusinessTripRequestDto(
+                currentWeekDate, 1L
+        );
+        
+        StudentScheduleEntity schedule1 = mock(StudentScheduleEntity.class);
+        StudentScheduleEntity schedule2 = mock(StudentScheduleEntity.class);
+        List<StudentScheduleEntity> schedules = List.of(schedule1, schedule2);
+        
+        given(afterSchoolRepository.findWithAllRelations(1L)).willReturn(Optional.of(afterSchool));
+        given(afterSchool.getPeriod()).willReturn(SchoolPeriod.ONE_PERIOD);
+        given(studentScheduleRepository.findAllByAfterSchoolAndDayAndPeriod(
+                afterSchool, currentWeekDate, SchoolPeriod.ONE_PERIOD)).willReturn(schedules);
+        given(schedule1.getId()).willReturn(1L);
+        given(schedule2.getId()).willReturn(2L);
+
+        // When
+        afterSchoolService.createBusinessTrip(currentWeekRequest);
+
+        // Then
+        verify(afterSchoolBusinessTripRepository).save(any(AfterSchoolBusinessTripEntity.class));
+        verify(studentScheduleRepository).findAllByAfterSchoolAndDayAndPeriod(
+                afterSchool, currentWeekDate, SchoolPeriod.ONE_PERIOD);
+        verify(scheduleRepository).deleteTopSchedulesByStudentScheduleIds(List.of(1L, 2L));
+    }
+
+    @Test
+    @DisplayName("다음주 출장 등록 시 스케줄이 삭제되지 않는다")
+    void shouldNotDeleteSchedulesWhenBusinessTripIsNextWeek() {
+        // Given
+        LocalDate nextWeekDate = LocalDate.now().plusWeeks(1);
+        AfterSchoolBusinessTripRequestDto nextWeekRequest = new AfterSchoolBusinessTripRequestDto(
+                nextWeekDate, 1L
+        );
+        
+        given(afterSchoolRepository.findWithAllRelations(1L)).willReturn(Optional.of(afterSchool));
+
+        // When
+        afterSchoolService.createBusinessTrip(nextWeekRequest);
+
+        // Then
+        verify(afterSchoolBusinessTripRepository).save(any(AfterSchoolBusinessTripEntity.class));
+        verify(studentScheduleRepository, never()).findAllByAfterSchoolAndDayAndPeriod(any(), any(), any());
+        verify(scheduleRepository, never()).deleteTopSchedulesByStudentScheduleIds(any());
+    }
+
+    @Test
+    @DisplayName("이번주 출장 등록 시 스케줄이 없으면 예외 발생")
+    void shouldThrowExceptionWhenNoSchedulesFoundForCurrentWeekBusinessTrip() {
+        // Given
+        LocalDate currentWeekDate = LocalDate.now();
+        AfterSchoolBusinessTripRequestDto currentWeekRequest = new AfterSchoolBusinessTripRequestDto(
+                currentWeekDate, 1L
+        );
+        
+        given(afterSchoolRepository.findWithAllRelations(1L)).willReturn(Optional.of(afterSchool));
+        given(afterSchool.getName()).willReturn("테스트 방과후");
+        given(afterSchool.getPeriod()).willReturn(SchoolPeriod.ONE_PERIOD);
+        given(studentScheduleRepository.findAllByAfterSchoolAndDayAndPeriod(
+                afterSchool, currentWeekDate, SchoolPeriod.ONE_PERIOD)).willReturn(Collections.emptyList());
+
+        // When & Then
+        assertThatThrownBy(() -> afterSchoolService.createBusinessTrip(currentWeekRequest))
+                .isInstanceOf(AfterSchoolBusinessTripScheduleNotFoundException.class)
+                .hasMessageContaining("테스트 방과후");
+
+        verify(afterSchoolBusinessTripRepository).save(any(AfterSchoolBusinessTripEntity.class));
+        verify(scheduleRepository, never()).deleteTopSchedulesByStudentScheduleIds(any());
+    }
+
+    @Test
+    @DisplayName("출장 엔티티가 올바른 정보로 저장된다")
+    void shouldSaveBusinessTripEntityWithCorrectInfo() {
+        // Given
+        LocalDate businessTripDate = LocalDate.now().plusDays(30);
+        AfterSchoolBusinessTripRequestDto request = new AfterSchoolBusinessTripRequestDto(
+                businessTripDate, 1L
+        );
+        
+        given(afterSchoolRepository.findWithAllRelations(1L)).willReturn(Optional.of(afterSchool));
+
+        // When
+        afterSchoolService.createBusinessTrip(request);
+
+        // Then
+        verify(afterSchoolBusinessTripRepository).save(argThat(businessTrip -> 
+                businessTrip.getDay().equals(businessTripDate) &&
+                businessTrip.getAfterSchool().equals(afterSchool)
+        ));
     }
 }
