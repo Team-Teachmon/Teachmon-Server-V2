@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import solvit.teachmon.domain.user.domain.entity.TeacherEntity;
 import solvit.teachmon.domain.user.domain.repository.TeacherRepository;
 import solvit.teachmon.domain.user.presentation.dto.response.TeacherSearchResponseDto;
 
@@ -33,10 +34,11 @@ class SearchTeacherServiceTest {
     void shouldSearchTeacherByQuerySuccessfully() {
         // Given: 검색 쿼리가 주어졌을 때
         String query = "이혜정";
-        List<TeacherSearchResponseDto> expectedResults = List.of(
-                new TeacherSearchResponseDto(234235326L, "이혜정")
-        );
-        given(teacherRepository.queryTeachersByName(query)).willReturn(expectedResults);
+        TeacherEntity teacher = mock(TeacherEntity.class);
+        when(teacher.getId()).thenReturn(234235326L);
+        when(teacher.getName()).thenReturn("이혜정");
+        List<TeacherEntity> mockTeachers = List.of(teacher);
+        given(teacherRepository.queryTeachersByName(query)).willReturn(mockTeachers);
 
         // When: 쿼리로 선생님을 검색하면
         List<TeacherSearchResponseDto> results = searchTeacherService.searchTeacherByQuery(query);
@@ -53,11 +55,14 @@ class SearchTeacherServiceTest {
     void shouldSearchTeacherByPartialNameSuccessfully() {
         // Given: 부분 이름 검색 쿼리가 주어졌을 때
         String query = "혜정";
-        List<TeacherSearchResponseDto> expectedResults = List.of(
-                new TeacherSearchResponseDto(234235326L, "이혜정"),
-                new TeacherSearchResponseDto(543543553L, "윤혜정")
-        );
-        given(teacherRepository.queryTeachersByName(query)).willReturn(expectedResults);
+        TeacherEntity teacher1 = mock(TeacherEntity.class);
+        when(teacher1.getId()).thenReturn(234235326L);
+        when(teacher1.getName()).thenReturn("이혜정");
+        TeacherEntity teacher2 = mock(TeacherEntity.class);
+        when(teacher2.getId()).thenReturn(543543553L);
+        when(teacher2.getName()).thenReturn("윤혜정");
+        List<TeacherEntity> mockTeachers = List.of(teacher1, teacher2);
+        given(teacherRepository.queryTeachersByName(query)).willReturn(mockTeachers);
 
         // When: 부분 이름으로 선생님을 검색하면
         List<TeacherSearchResponseDto> results = searchTeacherService.searchTeacherByQuery(query);
@@ -74,8 +79,8 @@ class SearchTeacherServiceTest {
     void shouldReturnEmptyResultWhenNoMatch() {
         // Given: 매칭되는 선생님이 없는 검색 쿼리가 주어졌을 때
         String query = "없는선생님";
-        List<TeacherSearchResponseDto> expectedResults = List.of();
-        given(teacherRepository.queryTeachersByName(query)).willReturn(expectedResults);
+        List<TeacherEntity> mockTeachers = List.of();
+        given(teacherRepository.queryTeachersByName(query)).willReturn(mockTeachers);
 
         // When: 쿼리로 선생님을 검색하면
         List<TeacherSearchResponseDto> results = searchTeacherService.searchTeacherByQuery(query);
@@ -90,8 +95,8 @@ class SearchTeacherServiceTest {
     void shouldSearchWithEmptyQuery() {
         // Given: 빈 쿼리가 주어졌을 때
         String query = "";
-        List<TeacherSearchResponseDto> expectedResults = List.of();
-        given(teacherRepository.queryTeachersByName(query)).willReturn(expectedResults);
+        List<TeacherEntity> mockTeachers = List.of();
+        given(teacherRepository.queryTeachersByName(query)).willReturn(mockTeachers);
 
         // When: 빈 쿼리로 선생님을 검색하면
         List<TeacherSearchResponseDto> results = searchTeacherService.searchTeacherByQuery(query);
@@ -106,8 +111,8 @@ class SearchTeacherServiceTest {
     void shouldHandleNullQuery() {
         // Given: null 쿼리가 주어졌을 때
         String query = null;
-        List<TeacherSearchResponseDto> expectedResults = List.of();
-        given(teacherRepository.queryTeachersByName(query)).willReturn(expectedResults);
+        List<TeacherEntity> mockTeachers = List.of();
+        given(teacherRepository.queryTeachersByName(query)).willReturn(mockTeachers);
 
         // When: null 쿼리로 선생님을 검색하면
         List<TeacherSearchResponseDto> results = searchTeacherService.searchTeacherByQuery(query);
@@ -122,10 +127,11 @@ class SearchTeacherServiceTest {
     void shouldSearchIgnoreCase() {
         // Given: 대소문자가 다른 검색 쿼리가 주어졌을 때
         String query = "혜정";
-        List<TeacherSearchResponseDto> expectedResults = List.of(
-                new TeacherSearchResponseDto(234235326L, "이혜정")
-        );
-        given(teacherRepository.queryTeachersByName(query)).willReturn(expectedResults);
+        TeacherEntity teacher = mock(TeacherEntity.class);
+        when(teacher.getId()).thenReturn(234235326L);
+        when(teacher.getName()).thenReturn("이혜정");
+        List<TeacherEntity> mockTeachers = List.of(teacher);
+        given(teacherRepository.queryTeachersByName(query)).willReturn(mockTeachers);
 
         // When: 대소문자가 다른 쿼리로 선생님을 검색하면
         List<TeacherSearchResponseDto> results = searchTeacherService.searchTeacherByQuery(query);
@@ -141,8 +147,8 @@ class SearchTeacherServiceTest {
     void shouldHandleSpecialCharacters() {
         // Given: 특수 문자가 포함된 검색 쿼리가 주어졌을 때
         String query = "김.선생";
-        List<TeacherSearchResponseDto> expectedResults = List.of();
-        given(teacherRepository.queryTeachersByName(query)).willReturn(expectedResults);
+        List<TeacherEntity> mockTeachers = List.of();
+        given(teacherRepository.queryTeachersByName(query)).willReturn(mockTeachers);
 
         // When: 특수 문자가 포함된 쿼리로 선생님을 검색하면
         List<TeacherSearchResponseDto> results = searchTeacherService.searchTeacherByQuery(query);

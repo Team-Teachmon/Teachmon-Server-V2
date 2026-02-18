@@ -18,6 +18,12 @@ public class SearchTeacherService {
     @Transactional(readOnly = true)
     public List<TeacherSearchResponseDto> searchTeacherByQuery(String query) {
         log.info("service" + query);
-        return teacherRepository.queryTeachersByName(query);
+        return teacherRepository.queryTeachersByName(query)
+                .stream()
+                .map(teacher -> TeacherSearchResponseDto.builder()
+                        .id(teacher.getId())
+                        .name(teacher.getName())
+                        .build())
+                .toList();
     }
 }

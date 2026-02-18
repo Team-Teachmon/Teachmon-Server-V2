@@ -1,8 +1,8 @@
 package solvit.teachmon.domain.user.presentation.dto.response;
 
-import com.querydsl.core.annotations.QueryProjection;
+import lombok.Builder;
 
-@QueryProjection
+@Builder
 public record TeacherSearchResponseDto(
         Long id,
         String name

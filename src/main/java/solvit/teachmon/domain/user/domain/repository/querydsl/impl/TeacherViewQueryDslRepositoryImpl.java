@@ -7,11 +7,8 @@ import org.springframework.stereotype.Repository;
 import solvit.teachmon.domain.user.domain.entity.QTeacherEntity;
 import solvit.teachmon.domain.user.domain.repository.querydsl.TeacherQueryDslRepository;
 import solvit.teachmon.domain.user.presentation.dto.response.QTeacherProfileResponseDto;
-import solvit.teachmon.domain.user.presentation.dto.response.QTeacherSearchResponseDto;
 import solvit.teachmon.domain.user.presentation.dto.response.TeacherProfileResponseDto;
-import solvit.teachmon.domain.user.presentation.dto.response.TeacherSearchResponseDto;
 
-import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -34,23 +31,5 @@ public class TeacherViewQueryDslRepositoryImpl implements TeacherQueryDslReposit
                 .where(QTeacherEntity.teacherEntity.id.eq(id))
                 .fetchOne()
         );
-    }
-
-    @Override
-    public List<TeacherSearchResponseDto> queryTeachersByName(String keyword) {
-        log.info("repo1" + keyword);
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return List.of();
-        }
-        log.info("repo2" + keyword);
-
-        return queryFactory.select(
-                        new QTeacherSearchResponseDto(
-                                QTeacherEntity.teacherEntity.id,
-                                QTeacherEntity.teacherEntity.name
-                        ))
-                .from(QTeacherEntity.teacherEntity)
-                .where(QTeacherEntity.teacherEntity.name.contains(keyword))
-                .fetch();
     }
 }
