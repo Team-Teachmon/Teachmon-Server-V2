@@ -40,7 +40,10 @@ public class AfterSchoolScheduleQueryDslRepositoryImpl implements AfterSchoolSch
                 .from(afterSchoolSchedule)
                 .join(afterSchoolSchedule.afterSchool, afterSchool)
                 .join(afterSchoolSchedule.afterSchool.place, place)
-                .where(afterSchoolSchedule.schedule.in(schedules))
+                .where(
+                        afterSchoolSchedule.schedule.in(schedules),
+                        afterSchoolSchedule.schedule.type.eq(ScheduleType.AFTER_SCHOOL)
+                )
                 .groupBy(place.floor)
                 .transform(
                         groupBy(place.floor)
@@ -57,7 +60,10 @@ public class AfterSchoolScheduleQueryDslRepositoryImpl implements AfterSchoolSch
                 .from(afterSchoolSchedule)
                 .join(afterSchoolReinforcement).on(afterSchoolSchedule.afterSchool.id.eq(afterSchoolReinforcement.afterSchool.id))
                 .join(afterSchoolReinforcement.place, place)
-                .where(afterSchoolSchedule.schedule.in(schedules))
+                .where(
+                        afterSchoolSchedule.schedule.in(schedules),
+                        afterSchoolSchedule.schedule.type.eq(ScheduleType.AFTER_SCHOOL_REINFORCEMENT)
+                )
                 .groupBy(place.floor)
                 .transform(
                         groupBy(place.floor)
@@ -79,6 +85,7 @@ public class AfterSchoolScheduleQueryDslRepositoryImpl implements AfterSchoolSch
                 .join(afterSchoolSchedule.afterSchool.place, place)
                 .where(
                         afterSchoolSchedule.schedule.in(schedules),
+                        afterSchoolSchedule.schedule.type.eq(ScheduleType.AFTER_SCHOOL),
                         place.floor.eq(floor)
                 )
                 .fetch();
@@ -100,6 +107,7 @@ public class AfterSchoolScheduleQueryDslRepositoryImpl implements AfterSchoolSch
                 .join(afterSchoolReinforcement.place, place)
                 .where(
                         afterSchoolSchedule.schedule.in(schedules),
+                        afterSchoolSchedule.schedule.type.eq(ScheduleType.AFTER_SCHOOL_REINFORCEMENT),
                         place.floor.eq(floor)
                 )
                 .fetch();
@@ -130,7 +138,10 @@ public class AfterSchoolScheduleQueryDslRepositoryImpl implements AfterSchoolSch
                 ))
                 .from(afterSchool)
                 .join(afterSchoolSchedule).on(afterSchoolSchedule.afterSchool.id.eq(afterSchool.id))
-                .join(schedule).on(afterSchoolSchedule.schedule.id.eq(schedule.id))
+                .join(schedule).on(
+                        afterSchoolSchedule.schedule.id.eq(schedule.id)
+                                .and(schedule.type.eq(ScheduleType.AFTER_SCHOOL))
+                )
                 .join(schedule.studentSchedule, studentSchedule)
                 .join(studentSchedule.student, student)
                 // 최신 스케줄 조인 (EXIT/AWAY 정보 표시용)
@@ -195,7 +206,7 @@ public class AfterSchoolScheduleQueryDslRepositoryImpl implements AfterSchoolSch
                 )
                 .join(schedule).on(
                         schedule.studentSchedule.id.eq(studentSchedule.id)
-                                .and(schedule.type.eq(ScheduleType.AFTER_SCHOOL))
+                                .and(schedule.type.eq(ScheduleType.AFTER_SCHOOL_REINFORCEMENT))
                 )
                 .join(studentSchedule.student, student)
                 // 최신 스케줄 조인 (EXIT/AWAY 정보 표시용)

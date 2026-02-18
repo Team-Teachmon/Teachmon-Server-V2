@@ -201,6 +201,7 @@ public class StudentScheduleQueryDslRepositoryImpl implements StudentScheduleQue
                                                         JPAExpressions
                                                                 .select(scheduleSub.studentSchedule.id, scheduleSub.stackOrder.max())
                                                                 .from(scheduleSub)
+                                                                .where(scheduleSub.studentSchedule.id.eq(studentSchedule.id))
                                                                 .groupBy(scheduleSub.studentSchedule.id)
                                                 ))
                                         // 케이스 2: 최신 스케줄이 EXIT/AWAY이고,

@@ -5,6 +5,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import solvit.teachmon.domain.after_school.domain.entity.QAfterSchoolEntity;
+import solvit.teachmon.domain.after_school.domain.entity.QAfterSchoolReinforcementEntity;
 import solvit.teachmon.domain.leave_seat.domain.entity.QLeaveSeatEntity;
 import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
 import solvit.teachmon.domain.place.domain.entity.QPlaceEntity;
@@ -43,8 +44,9 @@ public class PlaceQueryDslRepositoryImpl implements PlaceQueryDslRepository{
     public Boolean checkPlaceAvailability(LocalDate day, SchoolPeriod period, PlaceEntity place) {
         Boolean afterSchoolExist = existAfterSchoolPlaceByDayAndPeriodAndPlace(day, period, place);
         Boolean leaveSeatExist = existLeaveSeatPlaceByDayAndPeriodAndPlace(day, period, place);
+        Boolean afterSchoolReinforcementExist = existAfterSchoolReinforcementPlaceByDayAndPeriodAndPlace(day, period, place);
 
-        return afterSchoolExist || leaveSeatExist;
+        return afterSchoolExist || leaveSeatExist || afterSchoolReinforcementExist;
     }
 
     @Override
@@ -59,6 +61,20 @@ public class PlaceQueryDslRepositoryImpl implements PlaceQueryDslRepository{
                         afterSchool.weekDay.eq(weekDay),
                         afterSchool.period.eq(period),
                         afterSchool.place.eq(place)
+                )
+                .fetchFirst() != null;
+    }
+
+    private Boolean existAfterSchoolReinforcementPlaceByDayAndPeriodAndPlace(LocalDate day, SchoolPeriod period, PlaceEntity place) {
+        QAfterSchoolReinforcementEntity afterSchoolReinforcement = QAfterSchoolReinforcementEntity.afterSchoolReinforcementEntity;
+
+        return queryFactory
+                .selectOne()
+                .from(afterSchoolReinforcement)
+                .where(
+                        afterSchoolReinforcement.changeDay.eq(day),
+                        afterSchoolReinforcement.changePeriod.eq(period),
+                        afterSchoolReinforcement.place.eq(place)
                 )
                 .fetchFirst() != null;
     }
