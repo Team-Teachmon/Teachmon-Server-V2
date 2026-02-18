@@ -115,7 +115,7 @@ public class AdditionalSelfStudyService {
                 continue;
             }
 
-            if (!placeRepository.checkPlaceAvailability(
+            if(!placeRepository.checkPlaceAvailability(
                     studentSchedule.getDay(), studentSchedule.getPeriod(), place
             ))
                 return place;
