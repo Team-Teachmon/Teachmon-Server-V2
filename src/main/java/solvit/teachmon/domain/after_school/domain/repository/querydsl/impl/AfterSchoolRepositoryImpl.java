@@ -215,9 +215,9 @@ public class AfterSchoolRepositoryImpl implements AfterSchoolQueryDslRepository 
         List<StudentInfo> students = studentEntities.stream()
                 .map(ast -> new StudentInfo(
                         ast.getStudent().getId(),
-                        ast.getStudent().getGrade() + ast.getStudent().getClassNumber() + ast.getStudent().getNumber(),
+                        Integer.parseInt(ast.getStudent().getGrade().toString() + ast.getStudent().getClassNumber().toString() + String.format("%02d", ast.getStudent().getNumber())),
                         ast.getStudent().getName()
-                ))
+                        ))
                 .toList();
 
         return new AfterSchoolResponseDto(
