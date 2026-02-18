@@ -115,9 +115,8 @@ public class AdditionalSelfStudyService {
                 continue;
             }
 
-            List<ScheduleType> allowedTypes = List.of(ScheduleType.SELF_STUDY, ScheduleType.ADDITIONAL_SELF_STUDY);
-            if (!placeRepository.existByDayAndPeriodAndPlaceAndTypesNotIn(
-                    studentSchedule.getDay(), studentSchedule.getPeriod(), place, allowedTypes
+            if(!placeRepository.checkPlaceAvailability(
+                    studentSchedule.getDay(), studentSchedule.getPeriod(), place
             ))
                 return place;
             targetPoint = calculateNextClassNumber(targetPoint);

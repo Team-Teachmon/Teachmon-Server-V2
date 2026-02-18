@@ -103,7 +103,7 @@ class AdditionalSelfStudyServiceTest {
         PlaceEntity mockPlace = mock(PlaceEntity.class);
         given(placeRepository.findAllByGradePrefix(1))
                 .willReturn(Map.of(1, mockPlace, 2, mockPlace));
-        given(placeRepository.existByDayAndPeriodAndPlaceAndTypesNotIn(any(), any(), any(), anyList()))
+        given(placeRepository.checkPlaceAvailability(any(), any(), any()))
                 .willReturn(false);
 
         // When: 추가 자습을 설정하면
@@ -241,7 +241,7 @@ class AdditionalSelfStudyServiceTest {
         PlaceEntity mockPlace = mock(PlaceEntity.class);
         given(placeRepository.findAllByGradePrefix(1))
                 .willReturn(Map.of(1, mockPlace));
-        given(placeRepository.existByDayAndPeriodAndPlaceAndTypesNotIn(any(), any(), any(), anyList()))
+        given(placeRepository.checkPlaceAvailability(any(), any(), any()))
                 .willReturn(false);
 
         // When: 추가 자습을 설정하면
@@ -289,7 +289,7 @@ class AdditionalSelfStudyServiceTest {
         PlaceEntity mockPlace = mock(PlaceEntity.class);
         given(placeRepository.findAllByGradePrefix(1))
                 .willReturn(Map.of(1, mockPlace));
-        given(placeRepository.existByDayAndPeriodAndPlaceAndTypesNotIn(any(), any(), any(), anyList()))
+        given(placeRepository.checkPlaceAvailability(any(), any(), any()))
                 .willReturn(false);
 
         // When: 추가 자습을 설정하면
@@ -334,7 +334,7 @@ class AdditionalSelfStudyServiceTest {
         PlaceEntity mockPlace = mock(PlaceEntity.class);
         given(placeRepository.findAllByGradePrefix(1))
                 .willReturn(Map.of(1, mockPlace));
-        given(placeRepository.existByDayAndPeriodAndPlaceAndTypesNotIn(any(), any(), any(), anyList()))
+        given(placeRepository.checkPlaceAvailability(any(), any(), any()))
                 .willReturn(false);
 
         // When: 추가 자습을 설정하면
