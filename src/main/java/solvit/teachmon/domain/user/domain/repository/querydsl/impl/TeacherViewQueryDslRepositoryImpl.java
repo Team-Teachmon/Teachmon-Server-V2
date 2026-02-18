@@ -43,8 +43,7 @@ public class TeacherViewQueryDslRepositoryImpl implements TeacherQueryDslReposit
 
         BooleanBuilder builder = new BooleanBuilder();
         
-        // 이름으로 검색
-        builder.or(QTeacherEntity.teacherEntity.name.containsIgnoreCase(keyword));
+        builder.or(QTeacherEntity.teacherEntity.name.lower().contains(keyword.toLowerCase()));
         
         return queryFactory.select(
                 new QTeacherSearchResponseDto(
