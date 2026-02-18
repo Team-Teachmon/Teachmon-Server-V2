@@ -89,7 +89,7 @@ public class AfterSchoolReinforcementScheduleSettingStrategy implements StudentS
     private ScheduleEntity createNewSchedule(StudentScheduleEntity studentSchedule) {
         // Create a regular AFTER_SCHOOL schedule (the "reinforcement" is just that it's on a different day/period)
         Integer lastStackOrder = scheduleRepository.findLastStackOrderByStudentScheduleId(studentSchedule.getId());
-        ScheduleEntity newSchedule = ScheduleEntity.createNewStudentSchedule(studentSchedule, lastStackOrder, ScheduleType.AFTER_SCHOOL);
+        ScheduleEntity newSchedule = ScheduleEntity.createNewStudentSchedule(studentSchedule, lastStackOrder, ScheduleType.AFTER_SCHOOL_REINFORCEMENT);
 
         scheduleRepository.save(newSchedule);
 

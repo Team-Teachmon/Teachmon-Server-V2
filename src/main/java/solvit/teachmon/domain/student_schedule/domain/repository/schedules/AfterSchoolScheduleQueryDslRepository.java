@@ -11,6 +11,9 @@ import java.util.Map;
 
 public interface AfterSchoolScheduleQueryDslRepository {
     Map<Integer, Long> getAfterSchoolPlaceCount(List<ScheduleEntity> schedules);
+    Map<Integer, Long> getAfterSchoolReinforcementPlaceCount(List<ScheduleEntity> schedules);
     List<PlaceScheduleDto> getPlaceScheduleByFloor(List<ScheduleEntity> schedules, Integer floor);
+    List<PlaceScheduleDto> getReinforcementPlaceScheduleByFloor(List<ScheduleEntity> schedules, Integer floor);
     List<StudentScheduleDto> getStudentScheduleByPlaceAndDayAndPeriod(Long placeId, LocalDate day, SchoolPeriod period);
+    List<StudentScheduleDto> getReinforcementStudentScheduleByPlaceAndDayAndPeriod(Long placeId, LocalDate day, SchoolPeriod period);
 }
