@@ -2,6 +2,7 @@ package solvit.teachmon.domain.user.presentation.controller;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,7 @@ import solvit.teachmon.domain.user.presentation.dto.response.TeacherSearchRespon
 
 import java.util.List;
 
+@Slf4j
 @Validated
 @RestController
 @RequestMapping("/teacher")
@@ -22,6 +24,7 @@ public class SearchTeacherController {
 
     @GetMapping("/search")
     public ResponseEntity<List<TeacherSearchResponseDto>> searchTeacher(@RequestParam @NotNull(message = "검색어는 필수입니다.") String query) {
+        log.info(query);
         return ResponseEntity.ok(searchTeacherService.searchTeacherByQuery(query));
     }
 }
