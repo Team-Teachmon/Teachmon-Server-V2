@@ -49,7 +49,8 @@ public class PlaceQueryDslRepositoryImpl implements PlaceQueryDslRepository{
         return afterSchoolExist || leaveSeatExist || afterSchoolReinforcementExist;
     }
 
-    private Boolean existAfterSchoolPlaceByDayAndPeriodAndPlace(LocalDate day, SchoolPeriod period, PlaceEntity place) {
+    @Override
+    public Boolean existAfterSchoolPlaceByDayAndPeriodAndPlace(LocalDate day, SchoolPeriod period, PlaceEntity place) {
         QAfterSchoolEntity afterSchool = QAfterSchoolEntity.afterSchoolEntity;
         WeekDay weekDay = WeekDay.fromLocalDate(day);
 
