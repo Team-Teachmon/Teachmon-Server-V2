@@ -25,6 +25,7 @@ import solvit.teachmon.domain.user.domain.repository.TeacherRepository;
 import solvit.teachmon.global.enums.WeekDay;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -134,6 +135,11 @@ class AfterSchoolServiceBusinessTripTest {
         given(afterSchoolRepository.findWithAllRelations(afterSchoolId))
                 .willReturn(Optional.of(afterSchool));
         given(afterSchool.getWeekDay()).willReturn(WeekDay.MON);
+        
+        // 배치 쿼리로 빈 목록 반환 (출장이 없음을 의미)
+        given(afterSchoolBusinessTripRepository.findBusinessTripDatesByAfterSchoolAndDateRange(
+                eq(afterSchool), eq(startDay), eq(afterSchoolEndDay)))
+                .willReturn(List.of());
 
         // When
         AfterSchoolAffordableBusinessResponseDto result = afterSchoolService.getBusinessTrip(afterSchoolId);
@@ -155,6 +161,8 @@ class AfterSchoolServiceBusinessTripTest {
 
         verify(branchRepository).findCurrentBranch(any(LocalDate.class));
         verify(afterSchoolRepository).findWithAllRelations(afterSchoolId);
+        verify(afterSchoolBusinessTripRepository).findBusinessTripDatesByAfterSchoolAndDateRange(
+                eq(afterSchool), eq(startDay), eq(afterSchoolEndDay));
     }
 
     @Test
@@ -209,6 +217,11 @@ class AfterSchoolServiceBusinessTripTest {
         given(afterSchoolRepository.findWithAllRelations(afterSchoolId))
                 .willReturn(Optional.of(afterSchool));
         given(afterSchool.getWeekDay()).willReturn(WeekDay.TUE);
+        
+        // 배치 쿼리로 빈 목록 반환 (출장이 없음을 의미)
+        given(afterSchoolBusinessTripRepository.findBusinessTripDatesByAfterSchoolAndDateRange(
+                eq(afterSchool), eq(startDay), eq(afterSchoolEndDay)))
+                .willReturn(List.of());
 
         // When
         AfterSchoolAffordableBusinessResponseDto result = afterSchoolService.getBusinessTrip(afterSchoolId);
@@ -224,5 +237,50 @@ class AfterSchoolServiceBusinessTripTest {
         
         // 첫 번째 날짜가 3월 4일(화요일)인지 확인
         assertThat(result.dates().get(0)).isEqualTo(LocalDate.of(2025, 3, 4));
+    }
+
+    @Test
+    @DisplayName("이미 출장이 등록된 날짜는 출장 가능한 날짜 목록에서 제외된다")
+    void shouldExcludeAlreadyScheduledBusinessTripDates() {
+        // Given
+        Long afterSchoolId = 1L;
+        LocalDate startDay = LocalDate.of(2025, 3, 3); // 월요일
+        LocalDate afterSchoolEndDay = LocalDate.of(2025, 3, 31);
+        LocalDate existingBusinessTripDate = LocalDate.of(2025, 3, 10); // 월요일
+        
+        BranchEntity branch = mock(BranchEntity.class);
+        given(branch.getStartDay()).willReturn(startDay);
+        given(branch.getAfterSchoolEndDay()).willReturn(afterSchoolEndDay);
+        
+        given(branchRepository.findCurrentBranch(any(LocalDate.class)))
+                .willReturn(Optional.of(branch));
+        given(afterSchoolRepository.findWithAllRelations(afterSchoolId))
+                .willReturn(Optional.of(afterSchool));
+        given(afterSchool.getWeekDay()).willReturn(WeekDay.MON);
+        
+        // 배치 쿼리로 이미 등록된 출장 날짜 목록 반환
+        given(afterSchoolBusinessTripRepository.findBusinessTripDatesByAfterSchoolAndDateRange(
+                eq(afterSchool), eq(startDay), eq(afterSchoolEndDay)))
+                .willReturn(List.of(existingBusinessTripDate));
+
+        // When
+        AfterSchoolAffordableBusinessResponseDto result = afterSchoolService.getBusinessTrip(afterSchoolId);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.dates()).isNotEmpty();
+        
+        // 이미 출장이 등록된 날짜는 목록에 포함되지 않아야 함
+        assertThat(result.dates()).doesNotContain(existingBusinessTripDate);
+        
+        // 모든 날짜가 월요일인지 확인
+        result.dates().forEach(date -> 
+            assertThat(date.getDayOfWeek()).isEqualTo(WeekDay.MON.toDayOfWeek())
+        );
+
+        verify(branchRepository).findCurrentBranch(any(LocalDate.class));
+        verify(afterSchoolRepository).findWithAllRelations(afterSchoolId);
+        verify(afterSchoolBusinessTripRepository).findBusinessTripDatesByAfterSchoolAndDateRange(
+                eq(afterSchool), eq(startDay), eq(afterSchoolEndDay));
     }
 }

@@ -30,4 +30,12 @@ public interface AfterSchoolBusinessTripRepository extends JpaRepository<AfterSc
         HAVING COUNT(b) > COUNT(r)
     """)
     List<AfterSchoolEntity> findAfterSchoolsWithUnreinforcedTrips(@Param("afterSchools") List<AfterSchoolEntity> afterSchools, @Param("currentDate") LocalDate currentDate);
+
+    @Query("SELECT b.day FROM AfterSchoolBusinessTripEntity b " +
+           "WHERE b.afterSchool = :afterSchool " +
+           "AND b.day >= :startDate " +
+           "AND b.day < :endDate")
+    List<LocalDate> findBusinessTripDatesByAfterSchoolAndDateRange(@Param("afterSchool") AfterSchoolEntity afterSchool,
+                                                                   @Param("startDate") LocalDate startDate,
+                                                                   @Param("endDate") LocalDate endDate);
 }

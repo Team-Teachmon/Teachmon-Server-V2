@@ -276,12 +276,20 @@ public class AfterSchoolService {
         LocalDate startDay = branchEntity.getStartDay();
         LocalDate afterSchoolEndDay = branchEntity.getAfterSchoolEndDay();
         AfterSchoolEntity afterSchool = getAfterSchoolById(afterSchoolId);
+        
+        // 한 번의 쿼리로 해당 기간의 모든 출장 날짜를 조회
+        List<LocalDate> existingBusinessTripDates = afterSchoolBusinessTripRepository
+                .findBusinessTripDatesByAfterSchoolAndDateRange(afterSchool, startDay, afterSchoolEndDay);
+        
         List<LocalDate> localDates = new ArrayList<>();
+        DayOfWeek targetDayOfWeek = afterSchool.getWeekDay().toDayOfWeek();
+        
         for(LocalDate day = startDay; day.isBefore(afterSchoolEndDay); day = day.plusDays(1)) {
-            DayOfWeek dayOfWeek = afterSchool.getWeekDay().toDayOfWeek();
-            if(!day.getDayOfWeek().equals(dayOfWeek)) continue;
+            if(!day.getDayOfWeek().equals(targetDayOfWeek)) continue;
+            if(existingBusinessTripDates.contains(day)) continue;
             localDates.add(day);
         }
+        
         return AfterSchoolAffordableBusinessResponseDto.builder()
                 .dates(localDates)
                 .build();
