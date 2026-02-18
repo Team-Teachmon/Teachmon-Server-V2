@@ -38,11 +38,11 @@ public class TeacherViewQueryDslRepositoryImpl implements TeacherQueryDslReposit
 
     @Override
     public List<TeacherSearchResponseDto> queryTeachersByName(String keyword) {
-        log.info(keyword);
+        log.info("repo1" + keyword);
         if (keyword == null || keyword.trim().isEmpty()) {
             return List.of();
         }
-        log.info(keyword);
+        log.info("repo2" + keyword);
 
         return queryFactory.select(
                         new QTeacherSearchResponseDto(

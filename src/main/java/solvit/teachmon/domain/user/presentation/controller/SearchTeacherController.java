@@ -24,7 +24,7 @@ public class SearchTeacherController {
 
     @GetMapping("/search")
     public ResponseEntity<List<TeacherSearchResponseDto>> searchTeacher(@RequestParam @NotNull(message = "검색어는 필수입니다.") String query) {
-        log.info(query);
+        log.info("controller" + query);
         return ResponseEntity.ok(searchTeacherService.searchTeacherByQuery(query));
     }
 }
