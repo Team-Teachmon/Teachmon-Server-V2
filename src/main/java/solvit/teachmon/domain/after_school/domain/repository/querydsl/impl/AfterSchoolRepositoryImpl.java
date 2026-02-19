@@ -254,7 +254,7 @@ public class AfterSchoolRepositoryImpl implements AfterSchoolQueryDslRepository 
         return queryFactory.select(
                 new QAfterSchoolSearchResponseDto(
                         afterSchool.id,
-                        afterSchool.name
+                        afterSchool.name.concat("(").concat(afterSchool.teacher.name).concat(")")
                 )
         )
         .from(afterSchool)
