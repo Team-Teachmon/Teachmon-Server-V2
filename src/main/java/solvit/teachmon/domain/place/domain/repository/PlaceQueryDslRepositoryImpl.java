@@ -4,8 +4,10 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolEntity;
 import solvit.teachmon.domain.after_school.domain.entity.QAfterSchoolEntity;
 import solvit.teachmon.domain.after_school.domain.entity.QAfterSchoolReinforcementEntity;
+import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolBusinessTripRepository;
 import solvit.teachmon.domain.leave_seat.domain.entity.QLeaveSeatEntity;
 import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
 import solvit.teachmon.domain.place.domain.entity.QPlaceEntity;
@@ -24,6 +26,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PlaceQueryDslRepositoryImpl implements PlaceQueryDslRepository{
     private final JPAQueryFactory queryFactory;
+    private final AfterSchoolBusinessTripRepository afterSchoolBusinessTripRepository;
 
     @Override
     public Map<Integer, PlaceEntity> findAllByGradePrefix(Integer grade) {
@@ -54,15 +57,22 @@ public class PlaceQueryDslRepositoryImpl implements PlaceQueryDslRepository{
         QAfterSchoolEntity afterSchool = QAfterSchoolEntity.afterSchoolEntity;
         WeekDay weekDay = WeekDay.fromLocalDate(day);
 
-        return queryFactory
-                .selectOne()
-                .from(afterSchool)
+        AfterSchoolEntity foundAfterSchool = queryFactory
+                .selectFrom(afterSchool)
                 .where(
                         afterSchool.weekDay.eq(weekDay),
                         afterSchool.period.eq(period),
                         afterSchool.place.eq(place)
                 )
-                .fetchFirst() != null;
+                .fetchFirst();
+
+        // 방과후가 없거나 방과후가 이날 출장이면 false 반환 (장소를 사용하지 않음)
+        if (foundAfterSchool == null || afterSchoolBusinessTripRepository.existsByAfterSchoolAndDay(foundAfterSchool, day)) {
+            return false;
+        }
+
+        // 방과후가 존재하고 출장이 아니면 true 반환
+        return true;
     }
 
     private Boolean existAfterSchoolReinforcementPlaceByDayAndPeriodAndPlace(LocalDate day, SchoolPeriod period, PlaceEntity place) {
