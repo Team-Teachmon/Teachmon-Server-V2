@@ -9,6 +9,8 @@ public record TeacherSupervisionInfoVo(
         Long teacherId,
         String teacherName,
         LocalDate lastSupervisionDate,
-        Long totalSupervisionCount
+        Long totalSupervisionCount,
+        Long sevenPeriodCount,
+        Long eightElevenPeriodCount
 ) {
 }

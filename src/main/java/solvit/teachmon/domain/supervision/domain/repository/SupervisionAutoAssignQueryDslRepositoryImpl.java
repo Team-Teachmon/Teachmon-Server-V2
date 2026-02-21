@@ -1,6 +1,7 @@
 package solvit.teachmon.domain.supervision.domain.repository;
 
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -10,6 +11,7 @@ import solvit.teachmon.domain.supervision.domain.vo.SupervisionBanDayVo;
 import solvit.teachmon.domain.supervision.domain.vo.TeacherSupervisionInfoVo;
 import solvit.teachmon.domain.user.domain.entity.QTeacherEntity;
 import solvit.teachmon.domain.user.domain.enums.Role;
+import solvit.teachmon.global.enums.SchoolPeriod;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -34,7 +36,13 @@ public class SupervisionAutoAssignQueryDslRepositoryImpl implements SupervisionA
                         teacher.id,
                         teacher.name,
                         schedule.day.max(),
-                        schedule.id.count()
+                        schedule.id.count(),
+                        Expressions.numberTemplate(Long.class, 
+                                "SUM(CASE WHEN {0} = {1} THEN 1 ELSE 0 END)", 
+                                schedule.period, SchoolPeriod.SEVEN_PERIOD),
+                        Expressions.numberTemplate(Long.class, 
+                                "SUM(CASE WHEN {0} IN ({1}, {2}) THEN 1 ELSE 0 END) / 2", 
+                                schedule.period, SchoolPeriod.EIGHT_AND_NINE_PERIOD, SchoolPeriod.TEN_AND_ELEVEN_PERIOD)
                 ))
                 .from(teacher)
                 .leftJoin(schedule).on(schedule.teacher.eq(teacher))

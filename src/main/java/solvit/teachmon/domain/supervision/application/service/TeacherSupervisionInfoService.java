@@ -79,6 +79,8 @@ public class TeacherSupervisionInfoService {
                 .banDays(banDaysByTeacher.getOrDefault(projection.teacherId(), Set.of()))
                 .lastSupervisionDate(projection.lastSupervisionDate())
                 .totalSupervisionCount(getSupervisionCount(projection))
+                .sevenPeriodCount(getSevenPeriodCount(projection))
+                .eightElevenPeriodCount(getEightElevenPeriodCount(projection))
                 .supervisionCounts(new HashMap<>())
                 .build();
     }
@@ -86,5 +88,15 @@ public class TeacherSupervisionInfoService {
     private int getSupervisionCount(TeacherSupervisionInfoVo projection) {
         return projection.totalSupervisionCount() != null ? 
                 projection.totalSupervisionCount().intValue() : 0;
+    }
+
+    private int getSevenPeriodCount(TeacherSupervisionInfoVo projection) {
+        return projection.sevenPeriodCount() != null ? 
+                projection.sevenPeriodCount().intValue() : 0;
+    }
+
+    private int getEightElevenPeriodCount(TeacherSupervisionInfoVo projection) {
+        return projection.eightElevenPeriodCount() != null ? 
+                projection.eightElevenPeriodCount().intValue() : 0;
     }
 }

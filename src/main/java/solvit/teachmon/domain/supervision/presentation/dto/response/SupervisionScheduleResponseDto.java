@@ -14,7 +14,10 @@ public record SupervisionScheduleResponseDto(
         SupervisionInfo selfStudySupervision,
 
         @JsonProperty("leave_seat_supervision")
-        SupervisionInfo leaveSeatSupervision
+        SupervisionInfo leaveSeatSupervision,
+
+        @JsonProperty("seventh_period_supervision")
+        SupervisionInfo seventhPeriodSupervision
 ) {
     @Builder
     public record SupervisionInfo(

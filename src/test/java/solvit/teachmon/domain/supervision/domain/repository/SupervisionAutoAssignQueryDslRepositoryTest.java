@@ -83,6 +83,8 @@ class SupervisionAutoAssignQueryDslRepositoryTest {
         assertThat(kimTeacher.teacherName()).isEqualTo("김선생");
         assertThat(kimTeacher.lastSupervisionDate()).isEqualTo(LocalDate.of(2025, 1, 20));
         assertThat(kimTeacher.totalSupervisionCount()).isEqualTo(2L);
+        assertThat(kimTeacher.sevenPeriodCount()).isEqualTo(1L);
+        assertThat(kimTeacher.eightElevenPeriodCount()).isEqualTo(0L);
         
         // 이선생 확인
         var leeTeacher = result.stream()
@@ -94,6 +96,8 @@ class SupervisionAutoAssignQueryDslRepositoryTest {
         assertThat(leeTeacher.teacherName()).isEqualTo("이선생");
         assertThat(leeTeacher.lastSupervisionDate()).isEqualTo(LocalDate.of(2025, 1, 15));
         assertThat(leeTeacher.totalSupervisionCount()).isEqualTo(1L);
+        assertThat(leeTeacher.sevenPeriodCount()).isEqualTo(1L);
+        assertThat(leeTeacher.eightElevenPeriodCount()).isEqualTo(0L);
         
         // 박선생 확인 (감독 이력 없음)
         var parkTeacher = result.stream()
@@ -105,6 +109,8 @@ class SupervisionAutoAssignQueryDslRepositoryTest {
         assertThat(parkTeacher.teacherName()).isEqualTo("박선생");
         assertThat(parkTeacher.lastSupervisionDate()).isNull();
         assertThat(parkTeacher.totalSupervisionCount()).isEqualTo(0L);
+        assertThat(parkTeacher.sevenPeriodCount()).isEqualTo(0L);
+        assertThat(parkTeacher.eightElevenPeriodCount()).isEqualTo(0L);
     }
 
     @Test
@@ -179,6 +185,8 @@ class SupervisionAutoAssignQueryDslRepositoryTest {
         
         assertThat(newTeacherInfo.totalSupervisionCount()).isEqualTo(0L);
         assertThat(newTeacherInfo.lastSupervisionDate()).isNull();
+        assertThat(newTeacherInfo.sevenPeriodCount()).isEqualTo(0L);
+        assertThat(newTeacherInfo.eightElevenPeriodCount()).isEqualTo(0L);
     }
 
     @Test
@@ -204,6 +212,41 @@ class SupervisionAutoAssignQueryDslRepositoryTest {
         
         // 기존 3명만 조회됨 (각 테스트는 독립적으로 실행됨)
         assertThat(result).hasSize(3); // 기존 3명
+    }
+
+    @Test
+    @DisplayName("8-11교시 감독은 8-9교시와 10-11교시를 합쳐서 1회로 계산한다")
+    void shouldCount8To11PeriodSupervisionAsOneWhenBothPeriodsExist() {
+        // Given: 교사가 8-9교시와 10-11교시 둘 다 감독한 경우
+        SupervisionScheduleEntity eightNine = SupervisionScheduleEntity.builder()
+                .teacher(teacher1)
+                .day(LocalDate.of(2025, 1, 25))
+                .period(SchoolPeriod.EIGHT_AND_NINE_PERIOD)
+                .type(SupervisionType.SELF_STUDY_SUPERVISION)
+                .build();
+        
+        SupervisionScheduleEntity tenEleven = SupervisionScheduleEntity.builder()
+                .teacher(teacher1)
+                .day(LocalDate.of(2025, 1, 25))
+                .period(SchoolPeriod.TEN_AND_ELEVEN_PERIOD)
+                .type(SupervisionType.SELF_STUDY_SUPERVISION)
+                .build();
+        
+        scheduleRepository.saveAll(List.of(eightNine, tenEleven));
+
+        // When: 교사 감독 정보 조회
+        List<TeacherSupervisionInfoVo> result = 
+                autoAssignRepository.findEligibleTeacherSupervisionInfo();
+
+        // Then: 김선생의 8-11교시 감독 횟수가 1회로 계산됨
+        var kimTeacher = result.stream()
+                .filter(t -> t.teacherName().equals("김선생"))
+                .findFirst()
+                .orElseThrow();
+        
+        assertThat(kimTeacher.eightElevenPeriodCount()).isEqualTo(1L); // (2개 레코드 / 2) = 1회
+        assertThat(kimTeacher.sevenPeriodCount()).isEqualTo(1L); // 기존 7교시 1회
+        assertThat(kimTeacher.totalSupervisionCount()).isEqualTo(4L); // 기존 2회 + 새로 추가된 2회
     }
 
     // Helper methods

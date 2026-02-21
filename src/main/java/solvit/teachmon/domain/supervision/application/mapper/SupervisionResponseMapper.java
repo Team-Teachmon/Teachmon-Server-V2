@@ -37,6 +37,7 @@ public interface SupervisionResponseMapper {
                 .day(day)
                 .selfStudySupervision(findSupervisionByType(daySchedules, solvit.teachmon.domain.supervision.domain.enums.SupervisionType.SELF_STUDY_SUPERVISION))
                 .leaveSeatSupervision(findSupervisionByType(daySchedules, solvit.teachmon.domain.supervision.domain.enums.SupervisionType.LEAVE_SEAT_SUPERVISION))
+                .seventhPeriodSupervision(findSupervisionByType(daySchedules, solvit.teachmon.domain.supervision.domain.enums.SupervisionType.SEVENTH_PERIOD_SUPERVISION))
                 .build();
     }
 

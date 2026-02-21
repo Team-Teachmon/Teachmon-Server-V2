@@ -18,6 +18,8 @@ public record TeacherSupervisionInfo(
         Set<WeekDay> banDays,                           // 금지 요일들
         LocalDate lastSupervisionDate,                  // 최근 감독 날짜
         int totalSupervisionCount,                      // 총 감독 횟수
+        int sevenPeriodCount,                          // 7교시 감독 횟수
+        int eightElevenPeriodCount,                    // 8~11교시 감독 횟수
         Map<SupervisionType, Integer> supervisionCounts // 감독 타입별 횟수
 ) {
 }

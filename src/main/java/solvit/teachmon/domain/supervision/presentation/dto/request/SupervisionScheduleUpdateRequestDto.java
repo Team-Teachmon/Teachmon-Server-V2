@@ -15,6 +15,9 @@ public record SupervisionScheduleUpdateRequestDto(
         
         @JsonProperty("leave_seat_supervision_teacher_id")
         @NotNull(message = "이석 감독 교사 ID는 필수입니다.")
-        Long leaveSeatSupervisionTeacherId
+        Long leaveSeatSupervisionTeacherId,
+
+        @JsonProperty("seventh_period_supervision_teacher_id")
+        Long seventhPeriodSupervisionTeacherId
 ) {
 }

@@ -79,7 +79,7 @@ public class SupervisionAssignmentProcessor {
                 .filter(info -> !new TeacherSupervisionCalculator(info).isBanDay(date.getDayOfWeek()))
                 .toList();
 
-        if (availableTeachers.size() < 3) {
+        if (availableTeachers.size() < 2) {
             throw new InsufficientTeachersException(
                     "배정 가능한 교사가 부족합니다. 날짜: " + date + ", 가능한 교사 수: " + availableTeachers.size());
         }
@@ -96,7 +96,7 @@ public class SupervisionAssignmentProcessor {
     }
 
     private void validateSufficientTeachers(List<TeacherPriorityInfo> prioritizedTeachers, LocalDate date) {
-        if (prioritizedTeachers.size() < 3) {
+        if (prioritizedTeachers.size() < 2) {
             throw new InsufficientTeachersException(
                     "우선순위 계산 결과 배정 가능한 교사가 부족합니다. 날짜: " + date);
         }
@@ -105,41 +105,35 @@ public class SupervisionAssignmentProcessor {
     private DailySupervisionAssignment createDailyAssignment(List<TeacherPriorityInfo> prioritizedTeachers, LocalDate date) {
         TeacherSupervisionInfo selfStudyTeacher = prioritizedTeachers.get(0).teacherInfo();
         TeacherSupervisionInfo leaveSeatTeacher = prioritizedTeachers.get(1).teacherInfo();
-        TeacherSupervisionInfo seventhPeriodTeacher = prioritizedTeachers.get(2).teacherInfo();
 
-        validateDifferentTeachers(selfStudyTeacher, leaveSeatTeacher, seventhPeriodTeacher);
-        logAssignmentResult(date, prioritizedTeachers, selfStudyTeacher, leaveSeatTeacher, seventhPeriodTeacher);
+        validateDifferentTeachers(selfStudyTeacher, leaveSeatTeacher);
+        logAssignmentResult(date, prioritizedTeachers, selfStudyTeacher, leaveSeatTeacher);
 
         return DailySupervisionAssignment.builder()
                 .selfStudyTeacher(selfStudyTeacher)
                 .leaveSeatTeacher(leaveSeatTeacher)
-                .seventhPeriodTeacher(seventhPeriodTeacher)
                 .build();
     }
 
-    private void validateDifferentTeachers(TeacherSupervisionInfo selfStudyTeacher, TeacherSupervisionInfo leaveSeatTeacher, TeacherSupervisionInfo seventhPeriodTeacher) {
-        if (selfStudyTeacher.teacherId().equals(leaveSeatTeacher.teacherId()) ||
-            selfStudyTeacher.teacherId().equals(seventhPeriodTeacher.teacherId()) ||
-            leaveSeatTeacher.teacherId().equals(seventhPeriodTeacher.teacherId())) {
+    private void validateDifferentTeachers(TeacherSupervisionInfo selfStudyTeacher, TeacherSupervisionInfo leaveSeatTeacher) {
+        if (selfStudyTeacher.teacherId().equals(leaveSeatTeacher.teacherId())) {
             throw new InvalidAssignmentException("동일한 교사를 여러 감독 타입에 배정할 수 없습니다.");
         }
     }
 
     private void logAssignmentResult(LocalDate date, List<TeacherPriorityInfo> prioritizedTeachers, 
-                                   TeacherSupervisionInfo selfStudyTeacher, TeacherSupervisionInfo leaveSeatTeacher, TeacherSupervisionInfo seventhPeriodTeacher) {
-        log.debug("날짜 {} 우선순위: 자습감독={}({}), 이석감독={}({}), 7교시감독={}({})", 
+                                   TeacherSupervisionInfo selfStudyTeacher, TeacherSupervisionInfo leaveSeatTeacher) {
+        log.debug("날짜 {} 우선순위: 자습감독={}({}), 이석감독={}({})", 
                 date, 
                 selfStudyTeacher.teacherName(), prioritizedTeachers.get(0).priority(),
-                leaveSeatTeacher.teacherName(), prioritizedTeachers.get(1).priority(),
-                seventhPeriodTeacher.teacherName(), prioritizedTeachers.get(2).priority());
+                leaveSeatTeacher.teacherName(), prioritizedTeachers.get(1).priority());
     }
 
     private void logDailyAssignmentSuccess(LocalDate date, DailySupervisionAssignment assignment) {
-        log.debug("날짜 {} 배정 완료: 자습감독={}, 이석감독={}, 7교시감독={}", 
+        log.debug("날짜 {} 배정 완료: 자습감독={}, 이석감독={}", 
                 date, 
                 assignment.selfStudyTeacher().teacherName(), 
-                assignment.leaveSeatTeacher().teacherName(),
-                assignment.seventhPeriodTeacher().teacherName());
+                assignment.leaveSeatTeacher().teacherName());
     }
 
     private boolean isScheduleAlreadyExists(LocalDate date) {
@@ -167,12 +161,6 @@ public class SupervisionAssignmentProcessor {
         TeacherSupervisionCalculator leaveSeatCalculator = new TeacherSupervisionCalculator(assignment.leaveSeatTeacher());
         teacherInfoMap.put(leaveSeatTeacherId,
                 leaveSeatCalculator.withUpdatedSupervision(date, SupervisionType.LEAVE_SEAT_SUPERVISION));
-
-        // 7교시 감독 교사 정보 업데이트
-        Long seventhPeriodTeacherId = assignment.seventhPeriodTeacher().teacherId();
-        TeacherSupervisionCalculator seventhPeriodCalculator = new TeacherSupervisionCalculator(assignment.seventhPeriodTeacher());
-        teacherInfoMap.put(seventhPeriodTeacherId,
-                seventhPeriodCalculator.withUpdatedSupervision(date, SupervisionType.SEVENTH_PERIOD_SUPERVISION));
     }
 
     private List<SupervisionScheduleEntity> convertToScheduleEntities(DailySupervisionAssignment assignment, LocalDate date) {
@@ -180,9 +168,7 @@ public class SupervisionAssignmentProcessor {
                 .orElseThrow(TeacherNotFoundException::new);
         TeacherEntity leaveSeatTeacherEntity = teacherRepository.findById(assignment.leaveSeatTeacher().teacherId())
                 .orElseThrow(TeacherNotFoundException::new);
-        TeacherEntity seventhPeriodTeacherEntity = teacherRepository.findById(assignment.seventhPeriodTeacher().teacherId())
-                .orElseThrow(TeacherNotFoundException::new);
                 
-        return mapper.toScheduleEntities(date, selfStudyTeacherEntity, leaveSeatTeacherEntity, seventhPeriodTeacherEntity);
+        return mapper.toScheduleEntities(date, selfStudyTeacherEntity, leaveSeatTeacherEntity);
     }
 }

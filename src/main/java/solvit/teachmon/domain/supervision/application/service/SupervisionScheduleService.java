@@ -57,17 +57,16 @@ public class SupervisionScheduleService {
         TeacherEntity leaveSeatTeacher = teacherRepository.findById(requestDto.leaveSeatSupervisionTeacherId())
                 .orElseThrow(TeacherNotFoundException::new);
 
-        // 7~11교시까지 모든 교시에 대해 감독 일정 생성
-        SchoolPeriod[] periods = {
-            SchoolPeriod.SEVEN_PERIOD,
+        // 모든 감독 일정을 리스트에 담아서 일괄 저장
+        List<SupervisionScheduleEntity> schedules = new ArrayList<>();
+
+        // 8-11교시 자습/이석 감독 일정 생성 (8-9교시, 10-11교시)
+        SchoolPeriod[] eightToElevenPeriods = {
             SchoolPeriod.EIGHT_AND_NINE_PERIOD,
             SchoolPeriod.TEN_AND_ELEVEN_PERIOD
         };
 
-        // 모든 감독 일정을 리스트에 담아서 일괄 저장
-        List<SupervisionScheduleEntity> schedules = new ArrayList<>();
-        
-        for (SchoolPeriod period : periods) {
+        for (SchoolPeriod period : eightToElevenPeriods) {
             // 자습 감독 일정 생성
             SupervisionScheduleEntity selfStudySchedule = SupervisionScheduleEntity.builder()
                     .teacher(selfStudyTeacher)
@@ -85,6 +84,20 @@ public class SupervisionScheduleService {
                     .type(SupervisionType.LEAVE_SEAT_SUPERVISION)
                     .build();
             schedules.add(leaveSeatSchedule);
+        }
+
+        // 7교시 감독 일정 생성 (7교시 교사가 지정된 경우에만)
+        if (requestDto.seventhPeriodSupervisionTeacherId() != null) {
+            TeacherEntity seventhPeriodTeacher = teacherRepository.findById(requestDto.seventhPeriodSupervisionTeacherId())
+                    .orElseThrow(TeacherNotFoundException::new);
+
+            SupervisionScheduleEntity seventhPeriodSchedule = SupervisionScheduleEntity.builder()
+                    .teacher(seventhPeriodTeacher)
+                    .day(requestDto.day())
+                    .period(SchoolPeriod.SEVEN_PERIOD)
+                    .type(SupervisionType.SEVENTH_PERIOD_SUPERVISION)
+                    .build();
+            schedules.add(seventhPeriodSchedule);
         }
         
         supervisionScheduleRepository.saveAll(schedules);
@@ -116,8 +129,9 @@ public class SupervisionScheduleService {
         
         boolean hasSelfStudy = todayTypes.contains(SupervisionType.SELF_STUDY_SUPERVISION);
         boolean hasLeaveSeat = todayTypes.contains(SupervisionType.LEAVE_SEAT_SUPERVISION);
+        boolean hasSeventhPeriod = todayTypes.contains(SupervisionType.SEVENTH_PERIOD_SUPERVISION);
         
-        SupervisionTodayType todayType = SupervisionTodayType.from(hasSelfStudy, hasLeaveSeat);
+        SupervisionTodayType todayType = SupervisionTodayType.from(hasSelfStudy, hasLeaveSeat, hasSeventhPeriod);
         
         return SupervisionTodayResponseDto.builder()
                 .type(todayType)
