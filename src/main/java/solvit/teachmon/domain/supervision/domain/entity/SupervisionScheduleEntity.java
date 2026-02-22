@@ -12,6 +12,8 @@ import solvit.teachmon.global.entity.BaseEntity;
 import solvit.teachmon.global.enums.SchoolPeriod;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Entity
@@ -32,6 +34,12 @@ public class SupervisionScheduleEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     private SupervisionType type;
+
+    @OneToMany(mappedBy = "senderSchedule", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SupervisionExchangeEntity> senderExchanges = new ArrayList<>();
+
+    @OneToMany(mappedBy = "recipientSchedule", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SupervisionExchangeEntity> recipientExchanges = new ArrayList<>();
 
     @Builder
     public SupervisionScheduleEntity(TeacherEntity teacher, LocalDate day, SchoolPeriod period, SupervisionType type) {
