@@ -36,7 +36,7 @@ public class TeacherSupervisionCalculator {
         if (teacherInfo.lastSupervisionDate() == null) {
             return 365L; // 1년에 해당하는 일수로 충분히 높은 우선순위 보장
         }
-        return ChronoUnit.DAYS.between(teacherInfo.lastSupervisionDate(), targetDate);
+        return Math.max(0, ChronoUnit.DAYS.between(teacherInfo.lastSupervisionDate(), targetDate));
     }
     
     /**
