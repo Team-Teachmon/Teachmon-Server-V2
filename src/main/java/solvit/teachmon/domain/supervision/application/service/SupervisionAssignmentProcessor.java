@@ -88,11 +88,23 @@ public class SupervisionAssignmentProcessor {
     }
 
     private List<TeacherPriorityInfo> getPrioritizedTeachers(List<TeacherSupervisionInfo> availableTeachers, LocalDate date) {
-        return availableTeachers.stream()
-                .map(info -> new TeacherPriorityInfo(info, priorityStrategy.calculatePriority(info, date)))
-                .filter(priorityInfo -> priorityInfo.priority() > 0)
+        List<TeacherPriorityInfo> allTeachers = availableTeachers.stream()
+                .map(info -> {
+                    double priority = priorityStrategy.calculatePriority(info, date);
+                    log.info("교사 {} 우선순위: {} (날짜: {})", info.teacherName(), priority, date);
+                    return new TeacherPriorityInfo(info, priority);
+                })
                 .sorted(Comparator.comparing(TeacherPriorityInfo::priority).reversed())
                 .toList();
+                
+        List<TeacherPriorityInfo> filtered = allTeachers.stream()
+                .filter(priorityInfo -> priorityInfo.priority() > 0)
+                .toList();
+                
+        log.info("전체 교사 수: {}, 우선순위 > 0 교사 수: {} (날짜: {})", 
+                allTeachers.size(), filtered.size(), date);
+        
+        return filtered;
     }
 
     private void validateSufficientTeachers(List<TeacherPriorityInfo> prioritizedTeachers, LocalDate date) {
