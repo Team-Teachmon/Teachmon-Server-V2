@@ -16,7 +16,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import solvit.teachmon.domain.after_school.exception.InvalidAfterSchoolInfoException;
 import solvit.teachmon.domain.branch.domain.entity.BranchEntity;
-import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
 import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.schedules.AfterSchoolScheduleEntity;
 import solvit.teachmon.domain.user.domain.entity.TeacherEntity;
@@ -25,9 +24,7 @@ import solvit.teachmon.global.enums.SchoolPeriod;
 import solvit.teachmon.global.enums.WeekDay;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Getter
 @Entity
