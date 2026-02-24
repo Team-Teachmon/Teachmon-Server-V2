@@ -24,4 +24,8 @@ public interface SupervisionScheduleRepository extends JpaRepository<Supervision
     
     @Query("SELECT DISTINCT s.day FROM SupervisionScheduleEntity s WHERE s.teacher.id = :teacherId AND MONTH(s.day) = :month ORDER BY s.day")
     List<LocalDate> findSupervisionDaysByTeacherAndMonth(@Param("teacherId") Long teacherId, @Param("month") Integer month);
+    
+    @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END FROM SupervisionScheduleEntity s WHERE s.day = :day")
+    boolean existsByDay(@Param("day") LocalDate day);
+
 }
