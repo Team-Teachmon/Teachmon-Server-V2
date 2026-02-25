@@ -1,23 +1,16 @@
 package solvit.teachmon.domain.management.student.domain.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolStudentEntity;
-import solvit.teachmon.domain.leave_seat.domain.entity.FixedLeaveSeatStudentEntity;
-import solvit.teachmon.domain.leave_seat.domain.entity.LeaveSeatStudentEntity;
 import solvit.teachmon.domain.management.student.exception.InvalidStudentInfoException;
-import solvit.teachmon.domain.student_schedule.domain.entity.AwayEntity;
-import solvit.teachmon.domain.student_schedule.domain.entity.ExitEntity;
-import solvit.teachmon.domain.student_schedule.domain.entity.StudentScheduleEntity;
-import solvit.teachmon.domain.team.domain.entity.TeamParticipationEntity;
 import solvit.teachmon.global.entity.BaseEntity;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
 @Getter
 @Entity
@@ -38,27 +31,6 @@ public class StudentEntity extends BaseEntity {
 
     @Column(name = "name", nullable = false)
     private String name;
-
-    @OneToMany(mappedBy = "student", cascade = CascadeType.REMOVE, orphanRemoval = true)
-    private List<TeamParticipationEntity> teamParticipations = new ArrayList<>();
-
-    @OneToMany(mappedBy = "student", cascade = CascadeType.REMOVE, orphanRemoval = true)
-    private List<AfterSchoolStudentEntity> afterSchoolStudents = new ArrayList<>();
-
-    @OneToMany(mappedBy = "student", cascade = CascadeType.REMOVE, orphanRemoval = true)
-    private List<LeaveSeatStudentEntity> leaveSeatStudents = new ArrayList<>();
-
-    @OneToMany(mappedBy = "student", cascade = CascadeType.REMOVE, orphanRemoval = true)
-    private List<FixedLeaveSeatStudentEntity> fixedLeaveSeatStudents = new ArrayList<>();
-
-    @OneToMany(mappedBy = "student", cascade = CascadeType.REMOVE, orphanRemoval = true)
-    private List<StudentScheduleEntity> studentSchedules = new ArrayList<>();
-
-    @OneToMany(mappedBy = "student", cascade = CascadeType.REMOVE, orphanRemoval = true)
-    private List<ExitEntity> exits = new ArrayList<>();
-
-    @OneToMany(mappedBy = "student", cascade = CascadeType.REMOVE, orphanRemoval = true)
-    private List<AwayEntity> aways = new ArrayList<>();
 
     @Builder
     public StudentEntity(Integer year, Integer grade, Integer classNumber, Integer number, String name) {
@@ -96,11 +68,6 @@ public class StudentEntity extends BaseEntity {
         this.name = name;
     }
 
-    // 학년(1자리) + 학반(1자리) + 학번(2자리) 조합
-    public Integer calculateStudentNumber() {
-        return (grade * 1000) + (classNumber * 100) + number;
-    }
-
     private void validateGrade(Integer grade) {
         if (grade == null || grade < 1 || grade > 3) {
             throw new InvalidStudentInfoException("grade(학년)은 1 ~ 3 사이여야 합니다.");
@@ -123,5 +90,11 @@ public class StudentEntity extends BaseEntity {
         if (name == null || name.trim().isEmpty()) {
             throw new InvalidStudentInfoException("name(이름)은 필수입니다.");
         }
+    }
+
+    public Integer calculateStudentNumber() {
+        return Integer.parseInt(
+                grade + classNumber + String.format("%02d", number)
+        );
     }
 }
