@@ -3,6 +3,7 @@ package solvit.teachmon.domain.after_school.domain.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolStudentRepository;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolEntity;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolStudentEntity;
 import solvit.teachmon.domain.after_school.domain.vo.StudentAssignmentResultVo;
@@ -17,6 +18,7 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 public class AfterSchoolStudentDomainService {
+    private final AfterSchoolStudentRepository afterSchoolStudentRepository;
 
     public StudentAssignmentResultVo assignStudents(AfterSchoolEntity afterSchool, List<StudentEntity> students) {
         log.info("방과후 학생 배정 시작 - AfterSchool ID: {}, 요청 학생 수: {}", 
@@ -50,6 +52,16 @@ public class AfterSchoolStudentDomainService {
         if (!removedStudents.isEmpty()) {
             log.info("학생 삭제 시작 - 삭제 대상: {}", 
                     removedStudents.stream().map(StudentEntity::getName).toList());
+            
+            // Repository를 통한 배치 삭제로 DB에 확실히 반영 (N+1 문제 방지)
+            List<Long> removedStudentIds = removedStudents.stream()
+                    .map(StudentEntity::getId)
+                    .toList();
+            
+            afterSchoolStudentRepository.deleteByAfterSchoolIdAndStudentIdIn(
+                    afterSchool.getId(), removedStudentIds);
+            
+            // 메모리상 컬렉션에서도 제거
             afterSchool.getAfterSchoolStudents().removeIf(
                     as -> removedStudents.contains(as.getStudent())
             );
