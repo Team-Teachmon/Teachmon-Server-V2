@@ -1,6 +1,7 @@
 package solvit.teachmon.domain.after_school.domain.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolEntity;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolStudentEntity;
@@ -8,46 +9,75 @@ import solvit.teachmon.domain.after_school.domain.vo.StudentAssignmentResultVo;
 import solvit.teachmon.domain.after_school.exception.InvalidAfterSchoolInfoException;
 import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class AfterSchoolStudentDomainService {
 
     public StudentAssignmentResultVo assignStudents(AfterSchoolEntity afterSchool, List<StudentEntity> students) {
+        log.info("방과후 학생 배정 시작 - AfterSchool ID: {}, 요청 학생 수: {}", 
+                afterSchool.getId(), students != null ? students.size() : 0);
+        
         if (students == null) {
             students = List.of();
         }
 
-        List<StudentEntity> newStudentIds = validateStudents(afterSchool, students);
-        List<StudentEntity> currentStudentIds = afterSchool.getAfterSchoolStudents().stream()
+        List<StudentEntity> newStudents = validateStudents(afterSchool, students);
+        List<StudentEntity> currentStudents = afterSchool.getAfterSchoolStudents().stream()
                 .map(AfterSchoolStudentEntity::getStudent)
                 .toList();
 
-        afterSchool.getAfterSchoolStudents().clear();
+        log.info("현재 등록된 학생 수: {}, 새로 요청된 학생 수: {}", 
+                currentStudents.size(), newStudents.size());
 
-        List<StudentEntity> addedStudents = new ArrayList<>(newStudentIds);
-        addedStudents.removeAll(currentStudentIds);
+        // 추가할 학생들 계산
+        List<StudentEntity> addedStudents = newStudents.stream()
+                .filter(s -> !currentStudents.contains(s))
+                .toList();
 
-        List<StudentEntity> removedIds = new ArrayList<>(currentStudentIds);
-        removedIds.removeAll(newStudentIds);
+        // 삭제할 학생들 계산  
+        List<StudentEntity> removedStudents = currentStudents.stream()
+                .filter(s -> !newStudents.contains(s))
+                .toList();
 
-        for (StudentEntity student : students) {
-            afterSchool.getAfterSchoolStudents().add(
-                    AfterSchoolStudentEntity.builder()
-                            .afterSchool(afterSchool)
-                            .student(student)
-                            .build()
+        log.info("추가할 학생 수: {}, 삭제할 학생 수: {}", addedStudents.size(), removedStudents.size());
+
+        // 삭제할 학생들 개별 제거 (clear() 대신)
+        if (!removedStudents.isEmpty()) {
+            log.info("학생 삭제 시작 - 삭제 대상: {}", 
+                    removedStudents.stream().map(StudentEntity::getName).toList());
+            afterSchool.getAfterSchoolStudents().removeIf(
+                    as -> removedStudents.contains(as.getStudent())
             );
+            log.info("학생 삭제 완료");
         }
+
+        // 새 학생들 추가
+        if (!addedStudents.isEmpty()) {
+            log.info("학생 추가 시작 - 추가 대상: {}", 
+                    addedStudents.stream().map(StudentEntity::getName).toList());
+            for (StudentEntity student : addedStudents) {
+                afterSchool.getAfterSchoolStudents().add(
+                        AfterSchoolStudentEntity.builder()
+                                .afterSchool(afterSchool)
+                                .student(student)
+                                .build()
+                );
+            }
+            log.info("학생 추가 완료");
+        }
+
+        log.info("방과후 학생 배정 완료 - 최종 등록 학생 수: {}", 
+                afterSchool.getAfterSchoolStudents().size());
 
         return StudentAssignmentResultVo.builder()
                 .afterSchool(afterSchool)
                 .addedStudents(addedStudents)
-                .removedStudents(removedIds)
+                .removedStudents(removedStudents)
                 .build();
     }
 
