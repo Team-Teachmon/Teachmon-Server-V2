@@ -53,21 +53,19 @@ class SupervisionAutoAssignServiceTest {
     @Test
     @DisplayName("정상적인 기간으로 자동 배정 시 성공적으로 스케줄이 생성된다")
     void shouldCreateSchedulesSuccessfullyWhenValidPeriodProvided() {
-        // When & Then: 비즈니스 로직상 전날 자동배정이 완료되지 않았을 때 예외 발생
-        assertThatThrownBy(() -> autoAssignService.autoAssignSupervisionSchedules(startDate, endDate))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("전날")
-                .hasMessageContaining("자동배정이 완료되지 않았습니다");
+        // Given: 유효한 날짜 범위 (다음달)
+        // When & Then: 정상적인 실행이 가능해야 함 (더 이상 전날 배정 검증 없음)
+        assertThatCode(() -> autoAssignService.autoAssignSupervisionSchedules(startDate, endDate))
+                .doesNotThrowAnyException();
     }
 
     @Test
     @DisplayName("교사 정보가 없을 때 예외가 전파된다")
     void shouldPropagateExceptionWhenNoTeachersAvailable() {
-        // When & Then: 비즈니스 로직상 전날 자동배정 완료 검증에서 예외 발생
-        assertThatThrownBy(() -> autoAssignService.autoAssignSupervisionSchedules(startDate, endDate))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("전날")
-                .hasMessageContaining("자동배정이 완료되지 않았습니다");
+        // Given: 유효한 날짜 범위 (다음달)
+        // When & Then: 정상적인 실행이 가능해야 함 (더 이상 전날 배정 검증 없음)
+        assertThatCode(() -> autoAssignService.autoAssignSupervisionSchedules(startDate, endDate))
+                .doesNotThrowAnyException();
     }
 
     @Test
@@ -99,5 +97,21 @@ class SupervisionAutoAssignServiceTest {
         assertThatThrownBy(() -> autoAssignService.autoAssignSupervisionSchedules(startDate, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("시작일과 종료일은 필수입니다.");
+    }
+
+    @Test
+    @DisplayName("이번달이나 다음달이 아닌 날짜로 요청하면 예외가 발생한다")
+    void shouldThrowExceptionWhenDateIsNotCurrentOrNextMonth() {
+        // Given: 2개월 후 날짜
+        LocalDate now = LocalDate.now();
+        LocalDate twoMonthsLater = now.plusMonths(2);
+        LocalDate invalidStartDate = twoMonthsLater.withDayOfMonth(1);
+        LocalDate invalidEndDate = twoMonthsLater.withDayOfMonth(5);
+
+        // When & Then: 예외 발생
+        assertThatThrownBy(() -> autoAssignService.autoAssignSupervisionSchedules(invalidStartDate, invalidEndDate))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이번달")
+                .hasMessageContaining("다음달만 자동배정이 가능합니다");
     }
 }
