@@ -23,6 +23,7 @@ import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
 import solvit.teachmon.domain.place.domain.repository.PlaceRepository;
 import solvit.teachmon.domain.place.exception.PlaceNotFoundException;
 import solvit.teachmon.domain.user.domain.entity.TeacherEntity;
+import solvit.teachmon.domain.student_schedule.application.service.StudentScheduleSettingService;
 import solvit.teachmon.global.enums.SchoolPeriod;
 import solvit.teachmon.global.enums.WeekDay;
 
@@ -49,6 +50,8 @@ class FixedLeaveSeatFacadeServiceTest {
     private StudentRepository studentRepository;
     @Mock
     private FixedLeaveSeatMapper fixedLeaveSeatMapper;
+    @Mock
+    private StudentScheduleSettingService studentScheduleSettingService;
 
     private FixedLeaveSeatFacadeService fixedLeaveSeatFacadeService;
 
@@ -59,7 +62,8 @@ class FixedLeaveSeatFacadeServiceTest {
                 fixedLeaveSeatRepository,
                 fixedLeaveSeatStudentRepository,
                 studentRepository,
-                fixedLeaveSeatMapper
+                fixedLeaveSeatMapper,
+                studentScheduleSettingService
         );
     }
 
