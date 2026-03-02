@@ -40,3 +40,6 @@ out/
 
 ### Development Templates ###
 TEST_TEMPLATE.md
+
+.DS_Store
+**/.DS_Store

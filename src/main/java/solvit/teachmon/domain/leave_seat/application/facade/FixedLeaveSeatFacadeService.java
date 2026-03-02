@@ -20,7 +20,10 @@ import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
 import solvit.teachmon.domain.place.domain.repository.PlaceRepository;
 import solvit.teachmon.domain.place.exception.PlaceNotFoundException;
 import solvit.teachmon.domain.user.domain.entity.TeacherEntity;
+import solvit.teachmon.domain.student_schedule.application.service.StudentScheduleSettingService;
+import solvit.teachmon.global.enums.WeekDay;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -31,6 +34,7 @@ public class FixedLeaveSeatFacadeService {
     private final FixedLeaveSeatStudentRepository fixedLeaveSeatStudentRepository;
     private final StudentRepository studentRepository;
     private final FixedLeaveSeatMapper fixedLeaveSeatMapper;
+    private final StudentScheduleSettingService studentScheduleSettingService;
 
     @Transactional
     public void createStaticLeaveSeat(FixedLeaveSeatCreateRequest request, TeacherEntity teacher) {
@@ -44,6 +48,9 @@ public class FixedLeaveSeatFacadeService {
 
         // 고정 이석 학생들 저장
         saveFixedLeaveSeatStudent(fixedLeaveSeat, students);
+
+        // 요일이 오늘 기준으로 아직 지나지 않았다면 스케줄 세팅
+        updateScheduleIfNotPassed(request.weekDay());
     }
 
     @Transactional(readOnly = true)
@@ -98,6 +105,9 @@ public class FixedLeaveSeatFacadeService {
 
         // 새로운 학생 관계 저장
         saveFixedLeaveSeatStudent(fixedLeaveSeat, students);
+
+        // 요일이 오늘 기준으로 아직 지나지 않았다면 스케줄 세팅
+        updateScheduleIfNotPassed(request.weekDay());
     }
 
     @Transactional
@@ -138,5 +148,15 @@ public class FixedLeaveSeatFacadeService {
             throw new StudentNotFoundException();
         }
         return students;
+    }
+
+    private void updateScheduleIfNotPassed(WeekDay weekDay) {
+        LocalDate today = LocalDate.now();
+        LocalDate targetDate = today.with(weekDay.toDayOfWeek());
+
+        // 해당 요일이 오늘 기준으로 아직 지나지 않았다면 스케줄 세팅
+        if (!targetDate.isBefore(today)) {
+            studentScheduleSettingService.settingAllTypeSchedule(today);
+        }
     }
 }
