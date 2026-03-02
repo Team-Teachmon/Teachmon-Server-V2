@@ -24,6 +24,7 @@ import solvit.teachmon.domain.place.domain.repository.PlaceRepository;
 import solvit.teachmon.domain.place.exception.PlaceNotFoundException;
 import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
+import solvit.teachmon.domain.student_schedule.domain.repository.schedules.AfterSchoolScheduleRepository;
 import solvit.teachmon.domain.user.domain.repository.TeacherRepository;
 import solvit.teachmon.global.enums.SchoolPeriod;
 
@@ -63,6 +64,8 @@ class AfterSchoolServiceReinforcementTest {
     private StudentScheduleRepository studentScheduleRepository;
     @Mock
     private ScheduleRepository scheduleRepository;
+    @Mock
+    private AfterSchoolScheduleRepository afterSchoolScheduleRepository;
 
     private AfterSchoolService afterSchoolService;
     private AfterSchoolEntity afterSchool;
@@ -83,7 +86,8 @@ class AfterSchoolServiceReinforcementTest {
                 placeRepository,
                 studentScheduleRepository,
                 scheduleRepository,
-                afterSchoolScheduleService
+                afterSchoolScheduleService,
+                afterSchoolScheduleRepository
         );
 
         // Mock을 사용해서 Entity 생성

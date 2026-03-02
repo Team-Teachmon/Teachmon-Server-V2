@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolEntity;
 import solvit.teachmon.domain.after_school.domain.vo.StudentAssignmentResultVo;
+import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.StudentScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.schedules.AfterSchoolScheduleEntity;
@@ -35,6 +36,11 @@ public class AfterSchoolScheduleService {
 
             if (now.isAfter(afterSchoolEnd)) {
                 return;
+            }
+
+            // removedStudents의 스케줄 삭제
+            if (!assignmentResultVo.removedStudents().isEmpty()) {
+                removeAfterSchoolSchedulesForStudents(assignmentResultVo.removedStudents(), afterSchool, afterSchoolDate);
             }
 
             List<StudentScheduleEntity> studentScheduleEntities = studentScheduleRepository.findAllByStudentsAndDayAndPeriod(
@@ -82,6 +88,21 @@ public class AfterSchoolScheduleService {
                 .with(LocalTime.of(20, 40, 0));
 
         return now.isAfter(start) && now.isBefore(end);
+    }
+
+    private void removeAfterSchoolSchedulesForStudents(List<StudentEntity> removedStudents, AfterSchoolEntity afterSchool, LocalDate afterSchoolDate) {
+        // 각 제거된 학생에 대해 스케줄을 찾고 삭제 
+        List<StudentScheduleEntity> studentSchedules = studentScheduleRepository.findAllByStudentsAndDayAndPeriod(
+                removedStudents, afterSchoolDate, afterSchool.getPeriod());
+        
+        if (!studentSchedules.isEmpty()) {
+            List<Long> studentScheduleIds = studentSchedules.stream()
+                    .map(StudentScheduleEntity::getId)
+                    .toList();
+            
+            // 방과후 타입의 맨 위 Schedule들을 삭제 (기존 deleteTopSchedulesByStudentScheduleIds 활용)
+            scheduleRepository.deleteTopSchedulesByStudentScheduleIds(studentScheduleIds);
+        }
     }
 
     protected LocalDateTime currentDateTime() {

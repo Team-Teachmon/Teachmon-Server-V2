@@ -30,6 +30,7 @@ import solvit.teachmon.domain.branch.exception.BranchNotFoundException;
 import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
 import solvit.teachmon.domain.management.student.domain.repository.StudentRepository;
 import solvit.teachmon.domain.management.student.exception.StudentNotFoundException;
+import solvit.teachmon.domain.management.student.exception.InvalidStudentInfoException;
 import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
 import solvit.teachmon.domain.place.domain.repository.PlaceRepository;
 import solvit.teachmon.domain.student_schedule.domain.entity.StudentScheduleEntity;
@@ -37,6 +38,7 @@ import solvit.teachmon.domain.student_schedule.domain.repository.StudentSchedule
 import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
+import solvit.teachmon.domain.student_schedule.domain.repository.schedules.AfterSchoolScheduleRepository;
 import solvit.teachmon.domain.user.domain.entity.TeacherEntity;
 import solvit.teachmon.domain.user.domain.repository.TeacherRepository;
 import solvit.teachmon.domain.user.exception.TeacherNotFoundException;
@@ -64,6 +66,7 @@ public class AfterSchoolService {
     private final StudentScheduleRepository studentScheduleRepository;
     private final ScheduleRepository scheduleRepository;
     private final AfterSchoolScheduleService afterSchoolScheduleService;
+    private final AfterSchoolScheduleRepository afterSchoolScheduleRepository;
 
     @Transactional
     public void createAfterSchool(AfterSchoolCreateRequestDto requestDto) {
@@ -71,6 +74,8 @@ public class AfterSchoolService {
         PlaceEntity place = getPlaceById(requestDto.placeId());
         BranchEntity branch = getCurrentBranch();
         List<StudentEntity> students = fetchStudentsByIds(requestDto.studentsId());
+        
+        validateStudentsGrade(students, requestDto.grade());
 
         AfterSchoolEntity afterSchool = AfterSchoolEntity.builder()
                 .teacher(teacher)
@@ -110,6 +115,9 @@ public class AfterSchoolService {
         Integer grade = requestDto.grade() != null ? requestDto.grade() : afterSchool.getGrade();
         Integer year = requestDto.year() != null ? requestDto.year() : afterSchool.getYear();
 
+        // 변경사항이 있는지 확인
+        boolean hasChanges = hasAnyChange(teacher, place, weekDay, schoolPeriod, year, name, grade, afterSchool);
+
         afterSchool.updateAfterSchool(
                 teacher,
                 place,
@@ -128,7 +136,21 @@ public class AfterSchoolService {
 
         supervisionBanDayRepository.save(supervisionBanDayEntity);
 
-        updateStudentsIfPresent(requestDto.studentsId(), afterSchool);
+        // 변경사항이 있고 이번주라면 모든 학생들의 스케줄을 업데이트
+        if (hasChanges && isDateInCurrentWeek(LocalDate.now().with(weekDay.toDayOfWeek()))) {
+            List<Long> allStudentIds = afterSchool.getAfterSchoolStudents().stream()
+                    .map(afterSchoolStudent -> afterSchoolStudent.getStudent().getId())
+                    .toList();
+            
+            if (!allStudentIds.isEmpty()) {
+                List<StudentEntity> allStudents = fetchStudentsByIds(allStudentIds);
+                StudentAssignmentResultVo studentAssignmentResultVo = afterSchoolStudentDomainService.assignStudents(afterSchool, allStudents);
+                afterSchoolScheduleService.save(List.of(studentAssignmentResultVo));
+            }
+        }
+        else {
+            updateStudentsIfPresent(requestDto.studentsId(), afterSchool);
+        }
     }
 
     @Transactional
@@ -247,9 +269,12 @@ public class AfterSchoolService {
 
     private void updateStudentsIfPresent(List<Long> studentIds, AfterSchoolEntity afterSchool) {
         if (studentIds == null) return;
+        List<StudentEntity> students = fetchStudentsByIds(studentIds);
+        validateStudentsGrade(students, afterSchool.getGrade());
+        
         StudentAssignmentResultVo studentAssignmentResultVo = afterSchoolStudentDomainService.assignStudents(
                 afterSchool,
-                fetchStudentsByIds(studentIds)
+                students
         );
         afterSchoolScheduleService.save(List.of(studentAssignmentResultVo));
     }
@@ -344,7 +369,30 @@ public class AfterSchoolService {
             throw new AfterSchoolBusinessTripScheduleNotFoundException(afterSchool.getName());
         }
 
+        afterSchoolScheduleRepository.deleteByStudentScheduleIds(studentScheduleIds);
         scheduleRepository.deleteTopSchedulesByStudentScheduleIds(studentScheduleIds);
+    }
+
+    private boolean hasAnyChange(TeacherEntity teacher, PlaceEntity place, WeekDay weekDay, 
+                                SchoolPeriod schoolPeriod, Integer year, String name, Integer grade,
+                                AfterSchoolEntity afterSchool) {
+        return !teacher.equals(afterSchool.getTeacher()) ||
+               !place.equals(afterSchool.getPlace()) ||
+               !weekDay.equals(afterSchool.getWeekDay()) ||
+               !schoolPeriod.equals(afterSchool.getPeriod()) ||
+               !year.equals(afterSchool.getYear()) ||
+               !name.equals(afterSchool.getName()) ||
+               !grade.equals(afterSchool.getGrade());
+    }
+
+    private void validateStudentsGrade(List<StudentEntity> students, Integer requiredGrade) {
+        List<StudentEntity> invalidGradeStudents = students.stream()
+                .filter(student -> !student.getGrade().equals(requiredGrade))
+                .toList();
+        
+        if (!invalidGradeStudents.isEmpty()) {
+            throw new InvalidStudentInfoException("방과후 수업 학년과 일치하지 않는 학생이 포함되어 있습니다.");
+        }
     }
 
     private void createAfterSchoolReinforcementSchedules(
