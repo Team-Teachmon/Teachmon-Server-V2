@@ -30,12 +30,10 @@ import solvit.teachmon.domain.user.domain.repository.TeacherRepository;
 import solvit.teachmon.global.enums.SchoolPeriod;
 import solvit.teachmon.global.enums.WeekDay;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -98,15 +96,17 @@ class AfterSchoolServiceBanDayTest {
         TeacherEntity teacher = mock(TeacherEntity.class);
         PlaceEntity place = mock(PlaceEntity.class);
 
+        BranchEntity branch = mock(BranchEntity.class);
         given(teacherRepository.findById(1L)).willReturn(Optional.of(teacher));
         given(placeRepository.findById(2L)).willReturn(Optional.of(place));
-        given(branchRepository.findByYearAndDate(anyInt(), any(LocalDate.class))).willReturn(Optional.of(mock(BranchEntity.class)));
+        given(branchRepository.findByYearAndBranch(2024, 1)).willReturn(Optional.of(branch));
         given(studentRepository.findAllById(anyList())).willReturn(List.of());
         given(afterSchoolStudentDomainService.assignStudents(any(), anyList())).willReturn(mock(solvit.teachmon.domain.after_school.domain.vo.StudentAssignmentResultVo.class));
         given(afterSchoolRepository.save(any())).willReturn(mock(AfterSchoolEntity.class));
 
         AfterSchoolCreateRequestDto request = new AfterSchoolCreateRequestDto(
                 2024,
+                1,
                 1,
                 WeekDay.MON,
                 SchoolPeriod.SEVEN_PERIOD,

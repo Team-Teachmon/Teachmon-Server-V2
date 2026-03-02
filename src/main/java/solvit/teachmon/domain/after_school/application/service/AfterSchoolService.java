@@ -1,6 +1,7 @@
 package solvit.teachmon.domain.after_school.application.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolBusinessTripEntity;
@@ -50,6 +51,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -72,7 +74,7 @@ public class AfterSchoolService {
     public void createAfterSchool(AfterSchoolCreateRequestDto requestDto) {
         TeacherEntity teacher = getTeacherById(requestDto.teacherId());
         PlaceEntity place = getPlaceById(requestDto.placeId());
-        BranchEntity branch = getCurrentBranch();
+        BranchEntity branch = getBranchByYearAndId(requestDto.year(), requestDto.branch());
         List<StudentEntity> students = fetchStudentsByIds(requestDto.studentsId());
         
         validateStudentsGrade(students, requestDto.grade());
@@ -239,10 +241,8 @@ public class AfterSchoolService {
                 .orElseThrow(PlaceNotFoundException::new);
     }
 
-    private BranchEntity getCurrentBranch() {
-        LocalDate today = LocalDate.now();
-        int currentYear = today.getYear();
-        return branchRepository.findByYearAndDate(currentYear, today)
+    private BranchEntity getBranchByYearAndId(Integer year, Integer branch) {
+        return branchRepository.findByYearAndBranch(year, branch)
                 .orElseThrow(BranchNotFoundException::new);
     }
 
@@ -356,28 +356,42 @@ public class AfterSchoolService {
     }
 
     private void deleteRecentAfterSchoolSchedules(AfterSchoolEntity afterSchool, LocalDate businessTripDay) {
+        log.info("=== 출장 스케줄 삭제 시작 ===");
+        log.info("방과후: {}, 출장날짜: {}, 교시: {}", afterSchool.getName(), businessTripDay, afterSchool.getPeriod());
+        
         // 해당 방과후를 듣는 학생들의 출장 날짜 StudentSchedule 조회
         List<StudentScheduleEntity> afterSchoolSchedules = studentScheduleRepository
                 .findAllByAfterSchoolAndDayAndPeriod(afterSchool, businessTripDay, afterSchool.getPeriod());
+        
+        log.info("찾은 StudentSchedule 수: {}", afterSchoolSchedules.size());
         
         // N+1 문제 해결: 한 번의 쿼리로 모든 StudentSchedule의 최상위 Schedule 삭제
         List<Long> studentScheduleIds = afterSchoolSchedules.stream()
                 .map(StudentScheduleEntity::getId)
                 .toList();
         
+        log.info("StudentSchedule IDs: {}", studentScheduleIds);
+        
         if (studentScheduleIds.isEmpty()) {
+            log.info("StudentSchedule이 없어서 예외 발생");
             throw new AfterSchoolBusinessTripScheduleNotFoundException(afterSchool.getName());
         }
 
         // 먼저 각 StudentSchedule의 최상위 Schedule ID들을 조회 (AFTER_SCHOOL 타입만)
         List<Long> scheduleIds = scheduleRepository.findTopScheduleIdsByStudentScheduleIds(studentScheduleIds, ScheduleType.AFTER_SCHOOL);
         
+        log.info("삭제할 Schedule IDs: {}", scheduleIds);
+        
         if (!scheduleIds.isEmpty()) {
             // 그 다음 after_school_schedule 테이블의 참조 레코드들을 삭제
             afterSchoolScheduleRepository.deleteByScheduleIds(scheduleIds);
             // 마지막으로 schedule 테이블의 레코드들을 삭제
             scheduleRepository.deleteByIds(scheduleIds);
+            log.info("스케줄 삭제 완료");
+        } else {
+            log.info("삭제할 방과후 타입 스케줄이 없음");
         }
+        log.info("=== 출장 스케줄 삭제 끝 ===");
     }
 
     private boolean hasAnyChange(TeacherEntity teacher, PlaceEntity place, WeekDay weekDay, 
@@ -407,10 +421,15 @@ public class AfterSchoolService {
             LocalDate reinforcementDay, 
             SchoolPeriod reinforcementPeriod
     ) {
+        log.info("=== 보강 스케줄 생성 시작 ===");
+        log.info("방과후: {}, 보강날짜: {}, 보강교시: {}", afterSchool.getName(), reinforcementDay, reinforcementPeriod);
+        
         // 해당 방과후를 듣는 모든 학생들을 가져와서 보강 스케줄 생성
         List<StudentEntity> afterSchoolStudents = afterSchool.getAfterSchoolStudents().stream()
                 .map(AfterSchoolStudentEntity::getStudent)
                 .toList();
+
+        log.info("방과후를 듣는 학생 수: {}", afterSchoolStudents.size());
 
         // N+1 문제 해결: Student Schedule 들을 일괄 생성
         List<StudentScheduleEntity> reinforcementStudentSchedules = afterSchoolStudents.stream()
@@ -421,12 +440,17 @@ public class AfterSchoolService {
                         .build())
                 .toList();
 
+        log.info("생성할 StudentSchedule 수: {}", reinforcementStudentSchedules.size());
+        
         studentScheduleRepository.saveAll(reinforcementStudentSchedules);
+        log.info("StudentSchedule 저장 완료");
 
         // N+1 문제 해결: Schedule 들을 일괄 생성
         List<ScheduleEntity> reinforcementSchedules = reinforcementStudentSchedules.stream()
                 .map(studentSchedule -> {
                     Integer lastStackOrder = scheduleRepository.findLastStackOrderByStudentScheduleId(studentSchedule.getId());
+                    log.debug("학생 {}, StudentSchedule ID: {}, 마지막 stackOrder: {}", 
+                            studentSchedule.getStudent().getName(), studentSchedule.getId(), lastStackOrder);
                     return ScheduleEntity.createNewStudentSchedule(
                             studentSchedule,
                             lastStackOrder,
@@ -435,7 +459,12 @@ public class AfterSchoolService {
                 })
                 .toList();
 
+        log.info("생성할 보강 Schedule 수: {}", reinforcementSchedules.size());
+        
         scheduleRepository.saveAll(reinforcementSchedules);
+        log.info("보강 스케줄 저장 완료");
+        
+        log.info("=== 보강 스케줄 생성 끝 ===");
     }
 
 }

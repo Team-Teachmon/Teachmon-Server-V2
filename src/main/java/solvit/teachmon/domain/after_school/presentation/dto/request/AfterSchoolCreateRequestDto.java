@@ -21,6 +21,11 @@ public record AfterSchoolCreateRequestDto(
         @Max(value = 3, message = "학년은 1부터 3까지만 가능합니다.")
         Integer grade,
 
+        @NotNull(message = "분기는 필수입니다.")
+        @Min(value = 1, message = "분기는 1부터 4까지만 가능합니다.")
+        @Max(value = 4, message = "분기는 1부터 4까지만 가능합니다.")
+        Integer branch,
+
         @NotNull(message = "요일은 필수입니다.")
         @JsonProperty("week_day")
         WeekDay weekDay,

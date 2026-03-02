@@ -25,22 +25,26 @@ public class AfterSchoolScheduleService {
     private final StudentScheduleRepository studentScheduleRepository;
 
     public void save(List<StudentAssignmentResultVo> studentAssignmentResultVo) {
-        if(!checkUpdatableSchedule()) return;
         studentAssignmentResultVo.forEach((assignmentResultVo) -> {
             AfterSchoolEntity afterSchool = assignmentResultVo.afterSchool();
             LocalDateTime now = currentDateTime();
             LocalDate afterSchoolDate =
                     now.toLocalDate().with(TemporalAdjusters.nextOrSame(afterSchool.getWeekDay().toDayOfWeek()));
 
+            // removedStudents의 스케줄 삭제 (시간 제한 없이 항상 실행)
+            if (!assignmentResultVo.removedStudents().isEmpty()) {
+                removeAfterSchoolSchedulesForStudents(assignmentResultVo.removedStudents(), afterSchool, afterSchoolDate);
+            }
+
+            // 스케줄 업데이트 가능 시간이 아니면 추가 작업은 하지 않음
+            if (!checkUpdatableSchedule()) {
+                return;
+            }
+
             LocalDateTime afterSchoolEnd = afterSchoolDate.atTime(afterSchool.getPeriod().getEndTime());
 
             if (now.isAfter(afterSchoolEnd)) {
                 return;
-            }
-
-            // removedStudents의 스케줄 삭제
-            if (!assignmentResultVo.removedStudents().isEmpty()) {
-                removeAfterSchoolSchedulesForStudents(assignmentResultVo.removedStudents(), afterSchool, afterSchoolDate);
             }
 
             List<StudentScheduleEntity> studentScheduleEntities = studentScheduleRepository.findAllByStudentsAndDayAndPeriod(
@@ -100,8 +104,15 @@ public class AfterSchoolScheduleService {
                     .map(StudentScheduleEntity::getId)
                     .toList();
             
-            // 방과후 타입의 맨 위 Schedule들을 삭제 (기존 deleteTopSchedulesByStudentScheduleIds 활용)
-            scheduleRepository.deleteTopSchedulesByStudentScheduleIds(studentScheduleIds);
+            // 방과후 타입의 맨 위 Schedule ID들을 조회
+            List<Long> scheduleIds = scheduleRepository.findTopScheduleIdsByStudentScheduleIds(studentScheduleIds, ScheduleType.AFTER_SCHOOL);
+            
+            if (!scheduleIds.isEmpty()) {
+                // after_school_schedule 테이블의 참조 레코드들을 삭제
+                afterSchoolScheduleRepository.deleteByScheduleIds(scheduleIds);
+                // schedule 테이블의 레코드들을 삭제
+                scheduleRepository.deleteByIds(scheduleIds);
+            }
         }
     }
 

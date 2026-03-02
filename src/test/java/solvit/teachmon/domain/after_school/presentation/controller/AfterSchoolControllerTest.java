@@ -47,6 +47,7 @@ class AfterSchoolControllerTest {
         AfterSchoolCreateRequestDto request = new AfterSchoolCreateRequestDto(
                 2024,
                 2,
+                1,
                 WeekDay.MON,
                 SchoolPeriod.EIGHT_AND_NINE_PERIOD,
                 1L,

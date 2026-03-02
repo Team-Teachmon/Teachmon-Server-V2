@@ -60,6 +60,7 @@ class AfterSchoolScheduleServiceTest {
     @DisplayName("업데이트 가능 시간이 아니면 스케줄을 저장하지 않는다")
     void shouldSkipWhenOutsideUpdatableWindow() {
         AfterSchoolEntity afterSchool = mock(AfterSchoolEntity.class);
+        given(afterSchool.getWeekDay()).willReturn(WeekDay.FRI);
 
         StudentEntity student = mock(StudentEntity.class);
         StudentAssignmentResultVo resultVo = StudentAssignmentResultVo.builder()
