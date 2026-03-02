@@ -12,6 +12,12 @@ import org.springframework.http.HttpStatus;
 import solvit.teachmon.domain.management.teacher.domain.entity.SupervisionBanDayEntity;
 import solvit.teachmon.domain.user.exception.TeacherInvalidValueException;
 import solvit.teachmon.global.entity.BaseEntity;
+import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolEntity;
+import solvit.teachmon.domain.student_schedule.domain.entity.ExitEntity;
+import solvit.teachmon.domain.student_schedule.domain.entity.AwayEntity;
+import solvit.teachmon.domain.supervision.domain.entity.SupervisionScheduleEntity;
+import solvit.teachmon.domain.leave_seat.domain.entity.LeaveSeatEntity;
+import solvit.teachmon.domain.leave_seat.domain.entity.FixedLeaveSeatEntity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +60,24 @@ public class TeacherEntity extends BaseEntity {
 
     @OneToMany(mappedBy = "teacher", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<SupervisionBanDayEntity> supervisionBanDays = new ArrayList<>();
+
+    @OneToMany(mappedBy = "teacher", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<AfterSchoolEntity> afterSchools = new ArrayList<>();
+
+    @OneToMany(mappedBy = "teacher", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<ExitEntity> exits = new ArrayList<>();
+
+    @OneToMany(mappedBy = "teacher", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<AwayEntity> aways = new ArrayList<>();
+
+    @OneToMany(mappedBy = "teacher", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<SupervisionScheduleEntity> supervisionSchedules = new ArrayList<>();
+
+    @OneToMany(mappedBy = "teacher", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<LeaveSeatEntity> leaveSeats = new ArrayList<>();
+
+    @OneToMany(mappedBy = "teacher", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<FixedLeaveSeatEntity> fixedLeaveSeats = new ArrayList<>();
 
     @Builder
     public TeacherEntity(String mail, String name, String profile, String providerId, OAuth2Type oAuth2Type) {

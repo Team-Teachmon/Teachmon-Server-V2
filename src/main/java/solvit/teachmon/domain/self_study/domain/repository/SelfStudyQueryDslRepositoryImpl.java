@@ -1,6 +1,7 @@
 package solvit.teachmon.domain.self_study.domain.repository;
 
 import com.querydsl.core.group.GroupBy;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -26,8 +27,12 @@ public class SelfStudyQueryDslRepositoryImpl implements SelfStudyQueryDslReposit
                 .from(selfStudy)
                 .where(
                         selfStudy.branch.eq(branch),
-                        selfStudy.grade.eq(grade)
+                        gradeEq(grade, selfStudy)
                 )
                 .transform(GroupBy.groupBy(selfStudy.weekDay).as(GroupBy.list(selfStudy.period)));
+    }
+
+    private BooleanExpression gradeEq(Integer grade, QSelfStudyEntity selfStudy) {
+        return grade != null ? selfStudy.grade.eq(grade) : null;
     }
 }
