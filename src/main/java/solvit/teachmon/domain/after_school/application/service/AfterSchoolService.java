@@ -136,6 +136,8 @@ public class AfterSchoolService {
         AfterSchoolEntity afterSchool = afterSchoolRepository.findById(afterSchoolId)
                 .orElseThrow(() -> new AfterSchoolNotFoundException(afterSchoolId));
 
+        afterSchoolBusinessTripRepository.deleteAllByAfterSchool(afterSchool);
+        afterSchoolReinforcementRepository.deleteAllByAfterSchool(afterSchool);
         supervisionBanDayRepository.deleteAfterSchoolBanDay(afterSchool.getTeacher().getId(), afterSchool.getWeekDay());
         
         afterSchoolRepository.delete(afterSchool);

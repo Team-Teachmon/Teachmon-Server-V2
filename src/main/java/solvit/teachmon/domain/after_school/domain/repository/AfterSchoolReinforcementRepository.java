@@ -1,6 +1,7 @@
 package solvit.teachmon.domain.after_school.domain.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolEntity;
@@ -24,4 +25,8 @@ public interface AfterSchoolReinforcementRepository extends JpaRepository<AfterS
 
     @Query("SELECT r FROM AfterSchoolReinforcementEntity r WHERE r.afterSchool IN :afterSchools AND r.changeDay > :currentDate")
     List<AfterSchoolReinforcementEntity> findFutureReinforcementsByAfterSchools(@Param("afterSchools") List<AfterSchoolEntity> afterSchools, @Param("currentDate") LocalDate currentDate);
+
+    @Modifying
+    @Query("DELETE FROM AfterSchoolReinforcementEntity r WHERE r.afterSchool = :afterSchool")
+    void deleteAllByAfterSchool(@Param("afterSchool") AfterSchoolEntity afterSchool);
 }

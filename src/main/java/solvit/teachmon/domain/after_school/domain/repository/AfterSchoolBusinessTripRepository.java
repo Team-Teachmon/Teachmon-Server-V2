@@ -1,6 +1,7 @@
 package solvit.teachmon.domain.after_school.domain.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolBusinessTripEntity;
@@ -38,4 +39,8 @@ public interface AfterSchoolBusinessTripRepository extends JpaRepository<AfterSc
     List<LocalDate> findBusinessTripDatesByAfterSchoolAndDateRange(@Param("afterSchool") AfterSchoolEntity afterSchool,
                                                                    @Param("startDate") LocalDate startDate,
                                                                    @Param("endDate") LocalDate endDate);
+
+    @Modifying
+    @Query("DELETE FROM AfterSchoolBusinessTripEntity b WHERE b.afterSchool = :afterSchool")
+    void deleteAllByAfterSchool(@Param("afterSchool") AfterSchoolEntity afterSchool);
 }
