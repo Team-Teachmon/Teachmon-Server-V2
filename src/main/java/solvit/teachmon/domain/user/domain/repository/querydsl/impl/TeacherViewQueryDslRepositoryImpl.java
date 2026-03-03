@@ -24,7 +24,8 @@ public class TeacherViewQueryDslRepositoryImpl implements TeacherQueryDslReposit
                         new QTeacherProfileResponseDto(
                                 QTeacherEntity.teacherEntity.id,
                                 QTeacherEntity.teacherEntity.name,
-                                QTeacherEntity.teacherEntity.profile
+                                QTeacherEntity.teacherEntity.profile,
+                                QTeacherEntity.teacherEntity.role
                         )
                 )
                 .from(QTeacherEntity.teacherEntity)

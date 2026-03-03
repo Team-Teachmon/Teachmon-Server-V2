@@ -41,7 +41,7 @@ class TeacherServiceTest {
         // Given: 교사 ID가 주어졌을 때
         Long teacherId = 1L;
         TeacherProfileResponseDto expectedProfile = new TeacherProfileResponseDto(
-                teacherId, "김교사", "수학 전담"
+                teacherId, "김교사", "수학 전담", null
         );
         
         given(teachmonUserDetails.getId()).willReturn(teacherId);

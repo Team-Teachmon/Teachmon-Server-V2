@@ -27,7 +27,7 @@ class TeacherProfileRepositoryTest {
         // Given: 교사 ID와 예상 프로필이 주어졌을 때
         Long teacherId = 1L;
         TeacherProfileResponseDto expectedProfile = new TeacherProfileResponseDto(
-                teacherId, "김교사", "수학 전담"
+                teacherId, "김교사", "수학 전담", null
         );
         
         given(teacherQueryDslRepository.findUserProfileById(teacherId)).willReturn(Optional.of(expectedProfile));
@@ -70,7 +70,7 @@ class TeacherProfileRepositoryTest {
         String profile = "영어 전담 교사";
         
         // When: TeacherProfileResponseDto를 생성하면
-        TeacherProfileResponseDto dto = new TeacherProfileResponseDto(id, name, profile);
+        TeacherProfileResponseDto dto = new TeacherProfileResponseDto(id, name, profile, null);
 
         // Then: 모든 필드가 올바르게 설정된다
         assertThat(dto.id()).isEqualTo(id);

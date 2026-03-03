@@ -44,12 +44,17 @@ public class StudentRepositoryImpl implements StudentQueryDslRepository {
                 )
         )
         .from(studentEntity)
-        .where(studentEntity.grade.stringValue()
-                .concat(studentEntity.classNumber.stringValue())
-                .concat(studentEntity.number.stringValue())
-                .concat(" ")
-                .concat(studentEntity.name)
-                .containsIgnoreCase(trimmedKeyword))
+        .where(studentEntity.name.containsIgnoreCase(trimmedKeyword)
+                .or(studentEntity.grade.stringValue()
+                    .concat("-")
+                    .concat(studentEntity.classNumber.stringValue())
+                    .concat("-")
+                    .concat(studentEntity.number.stringValue())
+                    .containsIgnoreCase(trimmedKeyword))
+                .or(studentEntity.grade.stringValue()
+                    .concat(studentEntity.classNumber.stringValue())
+                    .concat(studentEntity.number.stringValue())
+                    .containsIgnoreCase(trimmedKeyword)))
         .fetch();
     }
 }
