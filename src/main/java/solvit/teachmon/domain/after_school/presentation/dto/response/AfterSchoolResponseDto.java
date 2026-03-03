@@ -6,7 +6,7 @@ import com.querydsl.core.annotations.QueryProjection;
 import java.util.List;
 
 public record AfterSchoolResponseDto(
-        Long id,
+        String id,
         @JsonProperty("week_day")
         String weekDay,
         String period,
@@ -39,7 +39,7 @@ public record AfterSchoolResponseDto(
 
 
     @QueryProjection
-    public AfterSchoolResponseDto(Long id, String weekDay, String period, String name, TeacherInfo teacher, PlaceInfo place, List<StudentInfo> students) {
+    public AfterSchoolResponseDto(String id, String weekDay, String period, String name, TeacherInfo teacher, PlaceInfo place, List<StudentInfo> students) {
         this.id = id;
         this.weekDay = weekDay;
         this.period = period;

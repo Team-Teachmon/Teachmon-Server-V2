@@ -347,8 +347,11 @@ public class AfterSchoolService {
             }
         });
         
+        // 두 ID를 "ID1,ID2" 형태로 합치기
+        String mergedId = eightNineDto.id() + "," + tenElevenDto.id();
+        
         return new AfterSchoolResponseDto(
-                baseDto.id(),
+                mergedId,
                 baseDto.weekDay(),
                 "8~11교시",
                 baseDto.name(),
