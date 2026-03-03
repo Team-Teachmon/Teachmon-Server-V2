@@ -38,8 +38,10 @@ public class SelfStudyFacadeService {
         selfStudyRepository.saveAll(selfStudyEntities);
 
         LocalDate today = LocalDate.now();
-        studentScheduleSettingService.createNewStudentSchedule(today);
-        studentScheduleSettingService.settingAllTypeSchedule(today);
+        if(today.isAfter(branchEntity.getStartDay()) && today.isBefore(branchEntity.getEndDay())) {
+            studentScheduleSettingService.createNewStudentSchedule(today);
+            studentScheduleSettingService.settingAllTypeSchedule(today);
+        }
     }
 
     public List<WeekDaySelfStudyDto> getSelfStudy(Integer year, Integer branch, Integer grade) {
