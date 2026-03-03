@@ -222,19 +222,26 @@ public class AfterSchoolService {
                 
         List<AfterSchoolByTeacherResponseDto> mergedList = new ArrayList<>();
         
-        for (List<AfterSchoolByTeacherResponseDto> dayGroup : groupedByWeekDay.values()) {
-            boolean hasEightNine = dayGroup.stream().anyMatch(dto -> "8~9교시".equals(dto.period()));
-            boolean hasTenEleven = dayGroup.stream().anyMatch(dto -> "10~11교시".equals(dto.period()));
+        // 원본 순서를 유지하기 위해 원본 리스트를 순회
+        for (AfterSchoolByTeacherResponseDto dto : responseList) {
+            String weekDay = dto.weekDay();
+            List<AfterSchoolByTeacherResponseDto> dayGroup = groupedByWeekDay.get(weekDay);
+            
+            // 이미 처리한 요일은 건너뛰기
+            if (dayGroup == null) continue;
+            
+            boolean hasEightNine = dayGroup.stream().anyMatch(d -> "8~9교시".equals(d.period()));
+            boolean hasTenEleven = dayGroup.stream().anyMatch(d -> "10~11교시".equals(d.period()));
             
             if (hasEightNine && hasTenEleven) {
                 // 8~9교시와 10~11교시를 찾아서 8~11교시로 합치기
                 AfterSchoolByTeacherResponseDto eightNineDto = dayGroup.stream()
-                        .filter(dto -> "8~9교시".equals(dto.period()))
+                        .filter(d -> "8~9교시".equals(d.period()))
                         .findFirst()
                         .orElse(null);
                 
                 AfterSchoolByTeacherResponseDto tenElevenDto = dayGroup.stream()
-                        .filter(dto -> "10~11교시".equals(dto.period()))
+                        .filter(d -> "10~11교시".equals(d.period()))
                         .findFirst()
                         .orElse(null);
                 
@@ -253,14 +260,18 @@ public class AfterSchoolService {
                     
                     // 나머지 교시들 추가 (8~9교시, 10~11교시 제외)
                     dayGroup.stream()
-                            .filter(dto -> !"8~9교시".equals(dto.period()) && !"10~11교시".equals(dto.period()))
+                            .filter(d -> !"8~9교시".equals(d.period()) && !"10~11교시".equals(d.period()))
                             .forEach(mergedList::add);
                 } else {
                     mergedList.addAll(dayGroup);
                 }
             } else {
-                mergedList.addAll(dayGroup);
+                // 연속 교시가 아니면 원본대로 추가
+                mergedList.add(dto);
             }
+            
+            // 처리한 요일을 맵에서 제거하여 중복 처리 방지
+            groupedByWeekDay.remove(weekDay);
         }
         
         return mergedList;
