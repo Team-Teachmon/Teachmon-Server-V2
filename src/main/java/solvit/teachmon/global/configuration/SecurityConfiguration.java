@@ -69,6 +69,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/leaveseat/**").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers("/teacher/me").hasAnyRole("ADMIN", "TEACHER", "VIEWER")
 
+                        .requestMatchers(HttpMethod.GET, "/student/search").hasAnyRole("ADMIN", "TEACHER", "VIEWER")
                         .requestMatchers("/self-study/**", "/teacher/**", "/student/**").hasRole("ADMIN")
 
                         // 6. 나머지는 인증만 필요

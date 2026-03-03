@@ -54,7 +54,7 @@ public class StudentRepositoryImpl implements StudentQueryDslRepository {
                     .containsIgnoreCase(trimmedKeyword))
                 .or(studentEntity.grade.stringValue()
                     .concat(studentEntity.classNumber.stringValue())
-                    .concat(Expressions.stringTemplate("LPAD({0}, 2, '0')", studentEntity.number))
+                    .concat(Expressions.stringTemplate("LPAD(CAST({0} AS VARCHAR), 2, '0')", studentEntity.number))
                     .containsIgnoreCase(trimmedKeyword)))
         .fetch();
     }
