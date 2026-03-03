@@ -146,7 +146,7 @@ class AfterSchoolControllerTest {
         );
         assertThat(response.getStatusCode().value()).isEqualTo(200);
         assertThat(response.getBody()).hasSize(1);
-        assertThat(response.getBody().getFirst().id()).isEqualTo(1L);
+        assertThat(response.getBody().getFirst().id()).isEqualTo("1");
         assertThat(response.getBody().getFirst().name()).isEqualTo("파이썬을 이용한 문제해결");
         
         verify(afterSchoolService).searchAfterSchools(any(AfterSchoolSearchRequestDto.class));
@@ -159,7 +159,7 @@ class AfterSchoolControllerTest {
         );
 
         return new AfterSchoolResponseDto(
-                1L,
+                "1",
                 "화",
                 "8~9교시",
                 "파이썬을 이용한 문제해결",

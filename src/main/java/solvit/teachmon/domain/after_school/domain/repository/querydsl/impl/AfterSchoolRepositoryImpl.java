@@ -221,7 +221,7 @@ public class AfterSchoolRepositoryImpl implements AfterSchoolQueryDslRepository 
                 .toList();
 
         return new AfterSchoolResponseDto(
-                entity.getId(),
+                entity.getId().toString(),
                 entity.getWeekDay().toKorean(),
                 entity.getPeriod().getPeriod(),
                 entity.getName(),
