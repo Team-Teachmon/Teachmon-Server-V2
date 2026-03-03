@@ -50,6 +50,8 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -188,7 +190,7 @@ public class AfterSchoolService {
     public List<AfterSchoolByTeacherResponseDto> getAfterSchoolsByTeacherId(Long teacherId) {
         List<AfterSchoolEntity> afterSchools = afterSchoolRepository.findByTeacherIdWithRelations(teacherId);
         
-        return afterSchools.stream()
+        List<AfterSchoolByTeacherResponseDto> responseList = afterSchools.stream()
                 .map(afterSchool -> {
                     // 보강 횟수 계산
                     int reinforcementCount = afterSchoolReinforcementRepository
@@ -209,7 +211,59 @@ public class AfterSchoolService {
                             reinforcementCount
                     );
                 })
-                .toList();
+                .collect(Collectors.toList());
+                
+        return mergeContinuousPeriods(responseList);
+    }
+    
+    private List<AfterSchoolByTeacherResponseDto> mergeContinuousPeriods(List<AfterSchoolByTeacherResponseDto> responseList) {
+        Map<String, List<AfterSchoolByTeacherResponseDto>> groupedByWeekDay = responseList.stream()
+                .collect(Collectors.groupingBy(AfterSchoolByTeacherResponseDto::weekDay));
+                
+        List<AfterSchoolByTeacherResponseDto> mergedList = new ArrayList<>();
+        
+        for (List<AfterSchoolByTeacherResponseDto> dayGroup : groupedByWeekDay.values()) {
+            boolean hasEightNine = dayGroup.stream().anyMatch(dto -> "8~9교시".equals(dto.period()));
+            boolean hasTenEleven = dayGroup.stream().anyMatch(dto -> "10~11교시".equals(dto.period()));
+            
+            if (hasEightNine && hasTenEleven) {
+                // 8~9교시와 10~11교시를 찾아서 8~11교시로 합치기
+                AfterSchoolByTeacherResponseDto eightNineDto = dayGroup.stream()
+                        .filter(dto -> "8~9교시".equals(dto.period()))
+                        .findFirst()
+                        .orElse(null);
+                
+                AfterSchoolByTeacherResponseDto tenElevenDto = dayGroup.stream()
+                        .filter(dto -> "10~11교시".equals(dto.period()))
+                        .findFirst()
+                        .orElse(null);
+                
+                if (eightNineDto != null && tenElevenDto != null) {
+                    // 8~11교시로 합친 DTO 생성 (8~9교시 기준으로)
+                    AfterSchoolByTeacherResponseDto mergedDto = new AfterSchoolByTeacherResponseDto(
+                            eightNineDto.id(),
+                            eightNineDto.weekDay(),
+                            "8~11교시",
+                            eightNineDto.name(),
+                            eightNineDto.place(),
+                            eightNineDto.reinforcementCount() + tenElevenDto.reinforcementCount()
+                    );
+                    
+                    mergedList.add(mergedDto);
+                    
+                    // 나머지 교시들 추가 (8~9교시, 10~11교시 제외)
+                    dayGroup.stream()
+                            .filter(dto -> !"8~9교시".equals(dto.period()) && !"10~11교시".equals(dto.period()))
+                            .forEach(mergedList::add);
+                } else {
+                    mergedList.addAll(dayGroup);
+                }
+            } else {
+                mergedList.addAll(dayGroup);
+            }
+        }
+        
+        return mergedList;
     }
 
     @Transactional(readOnly = true)
