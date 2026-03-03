@@ -285,70 +285,77 @@ public class AfterSchoolService {
                 
         List<AfterSchoolResponseDto> mergedList = new ArrayList<>();
         
-        // 원본 순서를 유지하기 위해 원본 리스트를 순회
-        for (AfterSchoolResponseDto dto : responseList) {
-            String weekDay = dto.weekDay();
-            List<AfterSchoolResponseDto> dayGroup = groupedByWeekDay.get(weekDay);
+        for (Map.Entry<String, List<AfterSchoolResponseDto>> entry : groupedByWeekDay.entrySet()) {
+            List<AfterSchoolResponseDto> dayGroup = entry.getValue();
+            List<AfterSchoolResponseDto> processedDtos = new ArrayList<>();
             
-            // 이미 처리한 요일은 건너뛰기
-            if (dayGroup == null) continue;
-            
-            // 8~9교시와 10~11교시에서 같은 방과후(이름, 선생님, 장소가 같은) 찾기
-            AfterSchoolResponseDto eightNineDto = dayGroup.stream()
-                    .filter(d -> "8~9교시".equals(d.period()))
-                    .findFirst()
-                    .orElse(null);
-                    
-            if (eightNineDto != null) {
-                // 8~9교시와 같은 방과후의 10~11교시 찾기
-                AfterSchoolResponseDto tenElevenDto = dayGroup.stream()
-                        .filter(d -> "10~11교시".equals(d.period()) &&
-                                   d.name().equals(eightNineDto.name()) &&
-                                   d.teacher().id().equals(eightNineDto.teacher().id()) &&
-                                   d.place().id().equals(eightNineDto.place().id()))
-                        .findFirst()
-                        .orElse(null);
+            // 각 방과후별로(이름+선생님+장소) 8~9교시와 10~11교시 쌍 찾기
+            for (AfterSchoolResponseDto dto : dayGroup) {
+                if (processedDtos.contains(dto)) continue;
                 
-                if (tenElevenDto != null) {
-                    // 8~11교시로 합친 DTO 생성 (8~9교시 기준으로)
-                    // 학생 리스트도 합치기
-                    List<StudentInfo> mergedStudents = new ArrayList<>(eightNineDto.students());
-                    tenElevenDto.students().forEach(student -> {
-                        if (!mergedStudents.contains(student)) {
-                            mergedStudents.add(student);
-                        }
-                    });
-                    
-                    AfterSchoolResponseDto mergedDto = new AfterSchoolResponseDto(
-                            eightNineDto.id(),
-                            eightNineDto.weekDay(),
-                            "8~11교시",
-                            eightNineDto.name(),
-                            eightNineDto.teacher(),
-                            eightNineDto.place(),
-                            mergedStudents
-                    );
-                    
-                    mergedList.add(mergedDto);
-                    
-                    // 합쳐진 8~9교시와 10~11교시 제외하고 나머지 추가
-                    dayGroup.stream()
-                            .filter(d -> !(d.equals(eightNineDto) || d.equals(tenElevenDto)))
-                            .forEach(mergedList::add);
+                if ("8~9교시".equals(dto.period())) {
+                    AfterSchoolResponseDto pair = findMatchingPeriod(dto, "10~11교시", dayGroup, processedDtos);
+                    if (pair != null) {
+                        mergedList.add(createMergedDto(dto, pair, dto));
+                        processedDtos.add(dto);
+                        processedDtos.add(pair);
+                    } else {
+                        mergedList.add(dto);
+                        processedDtos.add(dto);
+                    }
+                } else if ("10~11교시".equals(dto.period())) {
+                    AfterSchoolResponseDto pair = findMatchingPeriod(dto, "8~9교시", dayGroup, processedDtos);
+                    if (pair != null) {
+                        mergedList.add(createMergedDto(pair, dto, pair));
+                        processedDtos.add(dto);
+                        processedDtos.add(pair);
+                    } else {
+                        mergedList.add(dto);
+                        processedDtos.add(dto);
+                    }
                 } else {
-                    // 매칭되는 10~11교시가 없으면 원본대로 추가
+                    // 다른 교시는 원본대로 추가
                     mergedList.add(dto);
+                    processedDtos.add(dto);
                 }
-            } else {
-                // 8~9교시가 없으면 원본대로 추가
-                mergedList.add(dto);
             }
-            
-            // 처리한 요일을 맵에서 제거하여 중복 처리 방지
-            groupedByWeekDay.remove(weekDay);
         }
         
         return mergedList;
+    }
+    
+    private AfterSchoolResponseDto findMatchingPeriod(AfterSchoolResponseDto dto, String targetPeriod, 
+                                                     List<AfterSchoolResponseDto> dayGroup, 
+                                                     List<AfterSchoolResponseDto> processedDtos) {
+        return dayGroup.stream()
+                .filter(d -> targetPeriod.equals(d.period()) &&
+                           d.name().equals(dto.name()) &&
+                           d.teacher().id().equals(dto.teacher().id()) &&
+                           d.place().id().equals(dto.place().id()) &&
+                           !processedDtos.contains(d))
+                .findFirst()
+                .orElse(null);
+    }
+    
+    private AfterSchoolResponseDto createMergedDto(AfterSchoolResponseDto eightNineDto, 
+                                                  AfterSchoolResponseDto tenElevenDto, 
+                                                  AfterSchoolResponseDto baseDto) {
+        List<StudentInfo> mergedStudents = new ArrayList<>(eightNineDto.students());
+        tenElevenDto.students().forEach(student -> {
+            if (!mergedStudents.contains(student)) {
+                mergedStudents.add(student);
+            }
+        });
+        
+        return new AfterSchoolResponseDto(
+                baseDto.id(),
+                baseDto.weekDay(),
+                "8~11교시",
+                baseDto.name(),
+                baseDto.teacher(),
+                baseDto.place(),
+                mergedStudents
+        );
     }
 
     @Transactional(readOnly = true)
