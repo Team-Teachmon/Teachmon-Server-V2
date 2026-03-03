@@ -293,22 +293,23 @@ public class AfterSchoolService {
             // 이미 처리한 요일은 건너뛰기
             if (dayGroup == null) continue;
             
-            boolean hasEightNine = dayGroup.stream().anyMatch(d -> "8~9교시".equals(d.period()));
-            boolean hasTenEleven = dayGroup.stream().anyMatch(d -> "10~11교시".equals(d.period()));
-            
-            if (hasEightNine && hasTenEleven) {
-                // 8~9교시와 10~11교시를 찾아서 8~11교시로 합치기
-                AfterSchoolResponseDto eightNineDto = dayGroup.stream()
-                        .filter(d -> "8~9교시".equals(d.period()))
-                        .findFirst()
-                        .orElse(null);
-                
+            // 8~9교시와 10~11교시에서 같은 방과후(이름, 선생님, 장소가 같은) 찾기
+            AfterSchoolResponseDto eightNineDto = dayGroup.stream()
+                    .filter(d -> "8~9교시".equals(d.period()))
+                    .findFirst()
+                    .orElse(null);
+                    
+            if (eightNineDto != null) {
+                // 8~9교시와 같은 방과후의 10~11교시 찾기
                 AfterSchoolResponseDto tenElevenDto = dayGroup.stream()
-                        .filter(d -> "10~11교시".equals(d.period()))
+                        .filter(d -> "10~11교시".equals(d.period()) &&
+                                   d.name().equals(eightNineDto.name()) &&
+                                   d.teacher().id().equals(eightNineDto.teacher().id()) &&
+                                   d.place().id().equals(eightNineDto.place().id()))
                         .findFirst()
                         .orElse(null);
                 
-                if (eightNineDto != null && tenElevenDto != null) {
+                if (tenElevenDto != null) {
                     // 8~11교시로 합친 DTO 생성 (8~9교시 기준으로)
                     // 학생 리스트도 합치기
                     List<StudentInfo> mergedStudents = new ArrayList<>(eightNineDto.students());
@@ -330,15 +331,16 @@ public class AfterSchoolService {
                     
                     mergedList.add(mergedDto);
                     
-                    // 나머지 교시들 추가 (8~9교시, 10~11교시 제외)
+                    // 합쳐진 8~9교시와 10~11교시 제외하고 나머지 추가
                     dayGroup.stream()
-                            .filter(d -> !"8~9교시".equals(d.period()) && !"10~11교시".equals(d.period()))
+                            .filter(d -> !(d.equals(eightNineDto) || d.equals(tenElevenDto)))
                             .forEach(mergedList::add);
                 } else {
-                    mergedList.addAll(dayGroup);
+                    // 매칭되는 10~11교시가 없으면 원본대로 추가
+                    mergedList.add(dto);
                 }
             } else {
-                // 연속 교시가 아니면 원본대로 추가
+                // 8~9교시가 없으면 원본대로 추가
                 mergedList.add(dto);
             }
             
