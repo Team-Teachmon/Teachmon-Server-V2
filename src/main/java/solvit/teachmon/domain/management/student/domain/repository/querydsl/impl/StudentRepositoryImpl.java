@@ -1,5 +1,6 @@
 package solvit.teachmon.domain.management.student.domain.repository.querydsl.impl;
 
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -53,7 +54,7 @@ public class StudentRepositoryImpl implements StudentQueryDslRepository {
                     .containsIgnoreCase(trimmedKeyword))
                 .or(studentEntity.grade.stringValue()
                     .concat(studentEntity.classNumber.stringValue())
-                    .concat(studentEntity.number.stringValue())
+                    .concat(Expressions.stringTemplate("LPAD({0}, 2, '0')", studentEntity.number))
                     .containsIgnoreCase(trimmedKeyword)))
         .fetch();
     }
