@@ -6,6 +6,7 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import solvit.teachmon.domain.auth.infrastructure.security.strategy.OAuth2StrategyComposite;
 import solvit.teachmon.domain.auth.infrastructure.security.vo.TeachmonOAuth2User;
 import solvit.teachmon.domain.auth.infrastructure.security.vo.TeachmonOAuth2UserInfo;
@@ -20,6 +21,7 @@ public class TeachmonOAuth2UserFacade extends DefaultOAuth2UserService {
     private final OAuth2StrategyComposite oAuth2StrategyComposite;
 
     @Override
+    @Transactional
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2User oauth2User = super.loadUser(userRequest);
         OAuth2Type oAuth2Type = OAuth2Type.of(userRequest.getClientRegistration().getRegistrationId());
