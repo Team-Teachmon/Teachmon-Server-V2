@@ -25,10 +25,7 @@ import solvit.teachmon.global.enums.WeekDay;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Repository
@@ -140,17 +137,21 @@ public class AfterSchoolRepositoryImpl implements AfterSchoolQueryDslRepository 
                 .fetch();
 
         return entities.stream()
-                .map(entity -> new AfterSchoolMyResponseDto(
-                        entity.getId(),
-                        entity.getWeekDay().toKorean(),
-                        entity.getPeriod().getPeriod(),
-                        entity.getName(),
-                        new AfterSchoolMyResponseDto.PlaceInfo(
-                                entity.getPlace().getId(),
-                                entity.getPlace().getName()
-                        ),
-                        0
-                ))
+                .map(entity -> {
+                    List<StudentInfo> students = getStudentsByAfterSchoolId(entity.getId());
+                    return new AfterSchoolMyResponseDto(
+                            entity.getId(),
+                            entity.getWeekDay().toKorean(),
+                            entity.getPeriod().getPeriod(),
+                            entity.getName(),
+                            new AfterSchoolMyResponseDto.PlaceInfo(
+                                    entity.getPlace().getId(),
+                                    entity.getPlace().getName()
+                            ),
+                            0,
+                            students
+                    );
+                })
                 .toList();
     }
 
@@ -180,18 +181,22 @@ public class AfterSchoolRepositoryImpl implements AfterSchoolQueryDslRepository 
         String todayFormatted = formatTodayDate(today, todayWeekDay);
 
         return entities.stream()
-                .map(entity -> new AfterSchoolTodayResponseDto(
-                        entity.getId(),
-                        entity.getBranch().getBranch(),
-                        entity.getName(),
-                        new AfterSchoolTodayResponseDto.PlaceInfo(
-                                entity.getPlace().getId(),
-                                entity.getPlace().getName()
-                        ),
-                        entity.getGrade(),
-                        entity.getPeriod().getPeriod(),
-                        todayFormatted
-                ))
+                .map(entity -> {
+                    List<StudentInfo> students = getStudentsByAfterSchoolId(entity.getId());
+                    return new AfterSchoolTodayResponseDto(
+                            entity.getId(),
+                            entity.getBranch().getBranch(),
+                            entity.getName(),
+                            new AfterSchoolTodayResponseDto.PlaceInfo(
+                                    entity.getPlace().getId(),
+                                    entity.getPlace().getName()
+                            ),
+                            entity.getGrade(),
+                            entity.getPeriod().getPeriod(),
+                            todayFormatted,
+                            students
+                    );
+                })
                 .toList();
     }
 
@@ -211,6 +216,20 @@ public class AfterSchoolRepositoryImpl implements AfterSchoolQueryDslRepository 
         return dateStr + " " + weekDay.toKoreanFull();
     }
 
+    private List<StudentInfo> getStudentsByAfterSchoolId(Long afterSchoolId) {
+        List<AfterSchoolStudentEntity> studentEntities = afterSchoolStudentRepository
+                .findByAfterSchoolIdsWithStudent(List.of(afterSchoolId));
+        
+        return studentEntities.stream()
+                .map(ast -> new StudentInfo(
+                        ast.getStudent().getId(),
+                        Integer.parseInt(ast.getStudent().getGrade().toString() + ast.getStudent().getClassNumber().toString() + String.format("%02d", ast.getStudent().getNumber())),
+                        ast.getStudent().getName()
+                ))
+                .sorted(Comparator.comparingInt(StudentInfo::number))
+                .toList();
+    }
+
     private AfterSchoolResponseDto convertToAfterSchoolResponseDto(AfterSchoolEntity entity, List<AfterSchoolStudentEntity> studentEntities) {
         List<StudentInfo> students = studentEntities.stream()
                 .map(ast -> new StudentInfo(
@@ -218,6 +237,7 @@ public class AfterSchoolRepositoryImpl implements AfterSchoolQueryDslRepository 
                         Integer.parseInt(ast.getStudent().getGrade().toString() + ast.getStudent().getClassNumber().toString() + String.format("%02d", ast.getStudent().getNumber())),
                         ast.getStudent().getName()
                         ))
+                .sorted(Comparator.comparingInt(StudentInfo::number))
                 .toList();
 
         return new AfterSchoolResponseDto(

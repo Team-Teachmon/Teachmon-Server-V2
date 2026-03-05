@@ -68,6 +68,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/team/search").hasAnyRole("ADMIN", "TEACHER", "VIEWER")
                         .requestMatchers("/leaveseat/**").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers("/teacher/me").hasAnyRole("ADMIN", "TEACHER", "VIEWER")
+                        .requestMatchers(HttpMethod.DELETE, "/afterschool").hasRole("ADMIN")
 
                         .requestMatchers(HttpMethod.GET, "/student/search").hasAnyRole("ADMIN", "TEACHER", "VIEWER")
                         .requestMatchers("/self-study/**", "/teacher/**", "/student/**").hasRole("ADMIN")

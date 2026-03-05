@@ -55,7 +55,7 @@ public class AfterSchoolController {
     public ResponseEntity<List<AfterSchoolTodayResponseDto>> searchMyTodayAfterSchools(
             @AuthenticationPrincipal TeachmonUserDetails teachmonUserDetails) {
         Long teacherId = teachmonUserDetails.getId();
-        List<AfterSchoolTodayResponseDto> results = afterSchoolService.searchMyTodayAfterSchools(teacherId);
+        List<AfterSchoolTodayResponseDto> results = afterSchoolService.searchMyTodayAfterSchoolsToday(teacherId);
         return ResponseEntity.ok(results);
     }
 

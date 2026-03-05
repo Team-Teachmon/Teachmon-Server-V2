@@ -381,7 +381,7 @@ public class AfterSchoolService {
     }
 
     @Transactional(readOnly = true)
-    public List<AfterSchoolTodayResponseDto> searchMyTodayAfterSchools(Long teacherId) {
+    public List<AfterSchoolTodayResponseDto> searchMyTodayAfterSchoolsToday(Long teacherId) {
         return afterSchoolRepository.findMyTodayAfterSchoolsByTeacherId(teacherId);
     }
 

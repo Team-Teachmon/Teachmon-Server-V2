@@ -180,7 +180,8 @@ class AfterSchoolControllerTest {
                 "8~9교시",
                 "파이썬을 이용한 문제해결",
                 new AfterSchoolMyResponseDto.PlaceInfo(1L, "객체지향 프로그래밍실"),
-                0
+                0,
+                List.of()
         );
         
         given(afterSchoolService.searchMyAfterSchools(anyLong(), eq(grade)))
@@ -207,7 +208,8 @@ class AfterSchoolControllerTest {
                 "8~9교시",
                 "파이썬을 이용한 문제해결",
                 new AfterSchoolMyResponseDto.PlaceInfo(1L, "객체지향 프로그래밍실"),
-                0
+                0,
+                List.of()
         );
         
         AfterSchoolMyResponseDto responseDto2 = new AfterSchoolMyResponseDto(
@@ -216,7 +218,8 @@ class AfterSchoolControllerTest {
                 "7교시",
                 "Java 프로그래밍",
                 new AfterSchoolMyResponseDto.PlaceInfo(2L, "컴퓨터실1"),
-                2
+                2,
+                List.of()
         );
         
         given(afterSchoolService.searchMyAfterSchools(anyLong(), isNull()))
@@ -241,7 +244,8 @@ class AfterSchoolControllerTest {
                 new AfterSchoolTodayResponseDto.PlaceInfo(1L, "객체지향 프로그래밍실"),
                 2,
                 "8~9교시",
-                "2025.01.29 수요일"
+                "2025.01.29 수요일",
+                List.of()
         );
         
         AfterSchoolTodayResponseDto responseDto2 = new AfterSchoolTodayResponseDto(
@@ -251,10 +255,11 @@ class AfterSchoolControllerTest {
                 new AfterSchoolTodayResponseDto.PlaceInfo(2L, "객체지향 프로그래밍실2"),
                 1,
                 "10~11교시",
-                "2025.01.29 수요일"
+                "2025.01.29 수요일",
+                List.of()
         );
         
-        given(afterSchoolService.searchMyTodayAfterSchools(anyLong()))
+        given(afterSchoolService.searchMyTodayAfterSchoolsToday(anyLong()))
                 .willReturn(List.of(responseDto1, responseDto2));
 
         given(teachmonUserDetails.getId()).willReturn(1L);
@@ -276,13 +281,13 @@ class AfterSchoolControllerTest {
         assertThat(secondResult.grade()).isEqualTo(1);
         assertThat(secondResult.period()).isEqualTo("10~11교시");
         
-        verify(afterSchoolService).searchMyTodayAfterSchools(anyLong());
+        verify(afterSchoolService).searchMyTodayAfterSchoolsToday(anyLong());
     }
 
     @Test
     @DisplayName("나의 오늘 방과후가 없는 경우 빈 리스트를 반환한다")
     void shouldReturnEmptyListWhenNoTodayAfterSchools() {
-        given(afterSchoolService.searchMyTodayAfterSchools(anyLong()))
+        given(afterSchoolService.searchMyTodayAfterSchoolsToday(anyLong()))
                 .willReturn(List.of());
 
         given(teachmonUserDetails.getId()).willReturn(1L);
@@ -291,7 +296,7 @@ class AfterSchoolControllerTest {
         assertThat(response.getStatusCode().value()).isEqualTo(200);
         assertThat(response.getBody()).isEmpty();
         
-        verify(afterSchoolService).searchMyTodayAfterSchools(anyLong());
+        verify(afterSchoolService).searchMyTodayAfterSchoolsToday(anyLong());
     }
 
     @Test
