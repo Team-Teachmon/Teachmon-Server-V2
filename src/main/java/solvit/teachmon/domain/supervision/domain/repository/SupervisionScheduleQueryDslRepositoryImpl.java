@@ -35,7 +35,7 @@ public class SupervisionScheduleQueryDslRepositoryImpl implements SupervisionSch
                         teacher.role,
                         teacher.name,
                         teacher.mail,
-                        schedule.id.count().intValue()
+                        schedule.day.countDistinct().intValue()
                 ))
                 .from(teacher)
                 .leftJoin(schedule).on(schedule.teacher.eq(teacher))
