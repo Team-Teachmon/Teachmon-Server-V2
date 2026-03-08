@@ -76,6 +76,16 @@ public class SupervisionExchangeService {
 
         // 교체 요청 수락
         exchangeEntity.accept();
+
+        // 스케줄 담당자 교체
+        SupervisionScheduleEntity senderSchedule = exchangeEntity.getSenderSchedule();
+        SupervisionScheduleEntity recipientSchedule = exchangeEntity.getRecipientSchedule();
+        
+        TeacherEntity originalSenderTeacher = senderSchedule.getTeacher();
+        TeacherEntity originalRecipientTeacher = recipientSchedule.getTeacher();
+        
+        senderSchedule.changeTeacher(originalRecipientTeacher);
+        recipientSchedule.changeTeacher(originalSenderTeacher);
     }
 
     @Transactional
