@@ -77,4 +77,9 @@ public class SupervisionScheduleEntity extends BaseEntity {
             throw new InvalidSupervisionScheduleException("감독 타입은 필수입니다.");
         }
     }
+
+    public void changeTeacher(TeacherEntity newTeacher) {
+        validateTeacher(newTeacher);
+        this.teacher = newTeacher;
+    }
 }
