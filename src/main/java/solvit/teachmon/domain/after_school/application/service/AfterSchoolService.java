@@ -50,6 +50,7 @@ import solvit.teachmon.global.enums.WeekDay;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -181,7 +182,10 @@ public class AfterSchoolService {
     @Transactional(readOnly = true)
     public List<AfterSchoolResponseDto> searchAfterSchools(AfterSchoolSearchRequestDto searchRequest) {
         List<AfterSchoolResponseDto> results = afterSchoolRepository.findAfterSchoolsByConditions(searchRequest);
-        return mergeContinuousPeriodsForSearch(results);
+        List<AfterSchoolResponseDto> merged = mergeContinuousPeriodsForSearch(results);
+        return merged.stream()
+                .sorted(Comparator.comparing(a -> a.teacher().name()))
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
