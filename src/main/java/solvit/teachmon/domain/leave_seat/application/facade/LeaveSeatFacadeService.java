@@ -146,7 +146,7 @@ public class LeaveSeatFacadeService {
 
     @Transactional
     public void updateLeaveSeat(Long leaveSeatId, LeaveSeatUpdateRequest request, TeacherEntity teacher) {
-        LeaveSeatEntity leaveSeat = leaveSeatRepository.findById(leaveSeatId)
+        LeaveSeatEntity currentLeaveSeat = leaveSeatRepository.findById(leaveSeatId)
                 .orElseThrow(() -> new LeaveSeatValueInvalidException("이석을 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
 
         PlaceEntity place = placeRepository.findById(request.place())
@@ -157,14 +157,18 @@ public class LeaveSeatFacadeService {
         // 기존 LeaveSeatStudent, LeaveSeatSchedule, Schedule 삭제
         deleteLeaveSeatRelatedData(leaveSeatId);
 
-        // LeaveSeat 정보 업데이트
-        leaveSeat.changeLeaveSeatInfo(
-                teacher,
-                place,
-                request.day(),
-                request.period(),
-                request.cause()
-        );
+        // 새 place/day/period에 현재와 다른 leaveSeat이 있으면 그쪽으로 합치고, 없으면 기존 leaveSeat 수정
+        LeaveSeatEntity leaveSeat = leaveSeatRepository.findByPlaceAndDayAndPeriod(place, request.day(), request.period())
+                .filter(found -> !found.getId().equals(leaveSeatId))
+                .orElse(currentLeaveSeat);
+
+        if (leaveSeat != currentLeaveSeat) {
+            // 다른 leaveSeat으로 합쳐지는 경우: 기존 leaveSeat 삭제
+            leaveSeatRepository.delete(currentLeaveSeat);
+        } else {
+            // 일반 수정: 기존 leaveSeat 정보 업데이트
+            leaveSeat.changeLeaveSeatInfo(teacher, place, request.day(), request.period(), request.cause());
+        }
 
         // 새로운 LeaveSeatStudent, LeaveSeatSchedule, Schedule 저장
         saveLeaveSeatRelatedData(leaveSeat, students, request.day(), request.period());
