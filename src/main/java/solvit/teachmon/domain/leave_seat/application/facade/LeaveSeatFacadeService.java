@@ -162,7 +162,7 @@ public class LeaveSeatFacadeService {
                 .filter(found -> !found.getId().equals(leaveSeatId))
                 .orElse(currentLeaveSeat);
 
-        if (!leaveSeat.getId().equals(leaveSeatId)) {
+        if (leaveSeat != currentLeaveSeat) {
             // 다른 leaveSeat으로 합쳐지는 경우: 기존 leaveSeat 삭제
             leaveSeatRepository.delete(currentLeaveSeat);
         } else {
