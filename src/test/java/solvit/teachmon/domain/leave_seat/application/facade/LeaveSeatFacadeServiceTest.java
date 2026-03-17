@@ -390,6 +390,8 @@ class LeaveSeatFacadeServiceTest {
         given(leaveSeatRepository.findById(leaveSeatId)).willReturn(Optional.of(leaveSeat));
         given(placeRepository.findById(2L)).willReturn(Optional.of(newPlace));
         given(studentRepository.findAllById(List.of(3L, 4L))).willReturn(students);
+        // update 시 deleteLeaveSeatRelatedData 호출 시 필요
+        given(leaveSeatScheduleRepository.findAllByLeaveSeatId(leaveSeatId)).willReturn(List.of());
         given(studentScheduleRepository.findAllByStudentsAndDayAndPeriod(students, newDay, SchoolPeriod.EIGHT_AND_NINE_PERIOD))
                 .willReturn(studentSchedules);
         lenient().when(schedule1.getId()).thenReturn(3L);
@@ -443,7 +445,12 @@ class LeaveSeatFacadeServiceTest {
         Long leaveSeatId = 1L;
         LeaveSeatEntity leaveSeat = mock(LeaveSeatEntity.class);
 
+        // LeaveSeatSchedule과 Schedule을 mock으로 생성
+        ScheduleEntity schedule = mock(ScheduleEntity.class);
+        given(schedule.getId()).willReturn(1L);
+
         LeaveSeatScheduleEntity leaveSeatSchedule = mock(LeaveSeatScheduleEntity.class);
+        given(leaveSeatSchedule.getSchedule()).willReturn(schedule);
 
         given(leaveSeatRepository.findById(leaveSeatId)).willReturn(Optional.of(leaveSeat));
         given(leaveSeatScheduleRepository.findAllByLeaveSeatId(leaveSeatId)).willReturn(List.of(leaveSeatSchedule));
@@ -452,10 +459,10 @@ class LeaveSeatFacadeServiceTest {
         leaveSeatFacadeService.deleteLeaveSeat(leaveSeatId);
 
         // Then: 이석과 관련 데이터가 삭제된다
-        // LeaveSeatSchedule 삭제 시 cascade = CascadeType.REMOVE로 인해 Schedule도 자동으로 삭제됨
+        // LeaveSeatSchedule 개별 삭제를 통해 CASCADE가 작동하여 Schedule도 함께 삭제됨
         verify(leaveSeatRepository, times(1)).findById(leaveSeatId);
         verify(leaveSeatScheduleRepository, times(1)).findAllByLeaveSeatId(leaveSeatId);
-        verify(leaveSeatScheduleRepository, times(1)).deleteAllInBatch(anyList());
+        verify(leaveSeatScheduleRepository, times(1)).delete(leaveSeatSchedule);  // ✅ 개별 delete 호출 확인
         verify(leaveSeatStudentRepository, times(1)).deleteAllByLeaveSeatId(leaveSeatId);
         verify(leaveSeatRepository, times(1)).delete(leaveSeat);
     }
