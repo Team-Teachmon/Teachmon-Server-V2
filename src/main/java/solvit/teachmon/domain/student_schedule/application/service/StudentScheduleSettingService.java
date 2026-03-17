@@ -7,6 +7,7 @@ import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
 import solvit.teachmon.domain.management.student.domain.repository.StudentRepository;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategy;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategyComposite;
+import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.StudentScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
 import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
@@ -58,12 +59,14 @@ public class StudentScheduleSettingService {
             weekStudentSchedules = studentScheduleRepository.findAllByDayBetween(startDay, endDay);
         }
 
-        // 기존 스케줄(type별) 삭제: 중복 생성을 방지하기 위해 각 전략의 타입에 해당하는 기존 스케줄을 제거
+        // 기존 스케줄(type별) 삭제: 중복 생성을 방지하기 위해 각 전략의 타입에 해당하는 기존 스케줄을 엔티티 삭제로 제거
         if (!weekStudentSchedules.isEmpty()) {
             for (StudentScheduleSettingStrategy settingStrategy : settingStrategies) {
                 ScheduleType type = settingStrategy.getScheduleType();
                 for (StudentScheduleEntity studentSchedule : weekStudentSchedules) {
-                    scheduleRepository.deleteByStudentScheduleIdAndType(studentSchedule.getId(), type);
+                    // bulk delete가 아닌 엔티티 삭제를 사용하여 Cascade REMOVE가 동작하도록 함
+                    scheduleRepository.findByStudentScheduleIdAndType(studentSchedule.getId(), type)
+                            .ifPresent(scheduleRepository::delete);
                 }
             }
         }
