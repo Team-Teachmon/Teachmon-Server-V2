@@ -1,10 +1,12 @@
 package solvit.teachmon.domain.student_schedule.application.service;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -12,12 +14,15 @@ import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
 import solvit.teachmon.domain.management.student.domain.repository.StudentRepository;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategy;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategyComposite;
+import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
+import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
 
 import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -33,6 +38,13 @@ class StudentScheduleSettingServiceTest {
     @Mock
     private StudentScheduleGenerator studentScheduleGenerator;
 
+    // 새로 추가된 의존성들을 모킹
+    @Mock
+    private StudentScheduleRepository studentScheduleRepository;
+
+    @Mock
+    private ScheduleRepository scheduleRepository;
+
     @InjectMocks
     private StudentScheduleSettingService studentScheduleSettingService;
 
@@ -41,6 +53,13 @@ class StudentScheduleSettingServiceTest {
 
     @Mock
     private StudentScheduleSettingStrategy mockStrategy2;
+
+    @BeforeEach
+    void setUp() {
+        // 기본적으로 주간 조회는 빈 리스트를 반환하도록 설정하여 기존 테스트의 기대 동작과 충돌하지 않도록 함
+        given(studentScheduleRepository.findAllByDayBetween(any(LocalDate.class), any(LocalDate.class)))
+                .willReturn(List.of());
+    }
 
     @Test
     @DisplayName("새로운 학생 스케줄을 생성할 수 있다")
