@@ -1,12 +1,10 @@
 package solvit.teachmon.domain.student_schedule.application.service;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -14,15 +12,15 @@ import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
 import solvit.teachmon.domain.management.student.domain.repository.StudentRepository;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategy;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategyComposite;
+import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
-import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
-import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -38,10 +36,6 @@ class StudentScheduleSettingServiceTest {
     @Mock
     private StudentScheduleGenerator studentScheduleGenerator;
 
-    // 새로 추가된 의존성들을 모킹
-    @Mock
-    private StudentScheduleRepository studentScheduleRepository;
-
     @Mock
     private ScheduleRepository scheduleRepository;
 
@@ -53,13 +47,6 @@ class StudentScheduleSettingServiceTest {
 
     @Mock
     private StudentScheduleSettingStrategy mockStrategy2;
-
-    @BeforeEach
-    void setUp() {
-        // 기본적으로 주간 조회는 빈 리스트를 반환하도록 설정하여 기존 테스트의 기대 동작과 충돌하지 않도록 함
-        given(studentScheduleRepository.findAllByDayBetween(any(LocalDate.class), any(LocalDate.class)))
-                .willReturn(List.of());
-    }
 
     @Test
     @DisplayName("새로운 학생 스케줄을 생성할 수 있다")
@@ -102,35 +89,72 @@ class StudentScheduleSettingServiceTest {
     }
 
     @Test
-    @DisplayName("모든 타입의 스케줄을 설정할 수 있다")
-    void shouldSettingAllTypeSchedule() {
-        // Given: 여러 개의 설정 전략이 있을 때
-        LocalDate today = LocalDate.now();
+    @DisplayName("모든 타입의 스케줄을 설정하기 전에 기존 스케줄을 삭제한다")
+    void shouldDeleteFutureSchedulesBeforeSettingNewSchedules() {
+        // Given: 여러 개의 설정 전략이 있고, 삭제할 스케줄들이 있을 때
+        LocalDate monday = LocalDate.now().with(DayOfWeek.MONDAY);
+        LocalDate sunday = monday.with(DayOfWeek.SUNDAY);
+
+        ScheduleEntity schedule1 = mock(ScheduleEntity.class);
+        ScheduleEntity schedule2 = mock(ScheduleEntity.class);
+        List<ScheduleEntity> schedulesToDelete = List.of(schedule1, schedule2);
+
+        given(scheduleRepository.findAllByDateRange(monday, sunday))
+                .willReturn(schedulesToDelete);
         given(studentScheduleSettingStrategyComposite.getAllStrategies())
                 .willReturn(List.of(mockStrategy1, mockStrategy2));
 
         // When: 모든 타입의 스케줄을 설정하면
-        LocalDate nextWeek = today.plusWeeks(1);
-        studentScheduleSettingService.settingAllTypeSchedule(nextWeek);
+        studentScheduleSettingService.settingAllTypeSchedule(monday);
 
-        // Then: 모든 전략의 settingSchedule이 호출되어야 한다
-        verify(mockStrategy1, times(1)).settingSchedule(nextWeek);
-        verify(mockStrategy2, times(1)).settingSchedule(nextWeek);
+        // Then: 먼저 기존 스케줄을 조회하고 삭제해야 한다
+        verify(scheduleRepository).findAllByDateRange(monday, sunday);
+        verify(scheduleRepository).deleteAll(schedulesToDelete);
+
+        // 그 다음 새로운 스케줄을 설정해야 한다
+        verify(mockStrategy1, times(1)).settingSchedule(monday);
+        verify(mockStrategy2, times(1)).settingSchedule(monday);
     }
 
     @Test
-    @DisplayName("전략이 없으면 아무것도 설정하지 않는다")
+    @DisplayName("모든 타입의 스케줄을 설정할 수 있다")
+    void shouldSettingAllTypeSchedule() {
+        // Given: 여러 개의 설정 전략이 있을 때
+        LocalDate today = LocalDate.now();
+        LocalDate monday = today.with(DayOfWeek.MONDAY);
+        LocalDate sunday = monday.with(DayOfWeek.SUNDAY);
+
+        given(scheduleRepository.findAllByDateRange(monday, sunday))
+                .willReturn(List.of());
+        given(studentScheduleSettingStrategyComposite.getAllStrategies())
+                .willReturn(List.of(mockStrategy1, mockStrategy2));
+
+        // When: 모든 타입의 스케줄을 설정하면
+        studentScheduleSettingService.settingAllTypeSchedule(monday);
+
+        // Then: 모든 전략의 settingSchedule이 호출되어야 한다
+        verify(mockStrategy1, times(1)).settingSchedule(monday);
+        verify(mockStrategy2, times(1)).settingSchedule(monday);
+    }
+
+    @Test
+    @DisplayName("전략이 없으면 스케줄 삭제만 수행하고 설정하지 않는다")
     void shouldDoNothingWhenNoStrategies() {
         // Given: 설정 전략이 없을 때
         LocalDate today = LocalDate.now();
+        LocalDate monday = today.with(DayOfWeek.MONDAY);
+        LocalDate sunday = monday.with(DayOfWeek.SUNDAY);
+
+        given(scheduleRepository.findAllByDateRange(monday, sunday))
+                .willReturn(List.of());
         given(studentScheduleSettingStrategyComposite.getAllStrategies())
                 .willReturn(List.of());
 
         // When: 모든 타입의 스케줄을 설정하면
-        LocalDate nextWeek = today.plusWeeks(1);
-        studentScheduleSettingService.settingAllTypeSchedule(nextWeek);
+        studentScheduleSettingService.settingAllTypeSchedule(monday);
 
-        // Then: 아무런 전략도 호출되지 않아야 한다
+        // Then: 스케줄 삭제는 수행되어야 하고, 아무런 전략도 호출되지 않아야 한다
+        verify(scheduleRepository).deleteAll(List.of());
         verifyNoInteractions(mockStrategy1, mockStrategy2);
     }
 

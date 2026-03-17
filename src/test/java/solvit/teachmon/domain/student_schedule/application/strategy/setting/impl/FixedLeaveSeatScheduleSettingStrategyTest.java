@@ -13,6 +13,7 @@ import solvit.teachmon.domain.leave_seat.domain.entity.LeaveSeatEntity;
 import solvit.teachmon.domain.leave_seat.domain.repository.FixedLeaveSeatRepository;
 import solvit.teachmon.domain.leave_seat.domain.repository.FixedLeaveSeatStudentRepository;
 import solvit.teachmon.domain.leave_seat.domain.repository.LeaveSeatRepository;
+import solvit.teachmon.domain.leave_seat.domain.repository.LeaveSeatStudentRepository;
 import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
 import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
 import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
@@ -42,6 +43,9 @@ class FixedLeaveSeatScheduleSettingStrategyTest {
 
     @Mock
     private FixedLeaveSeatStudentRepository fixedLeaveSeatStudentRepository;
+
+    @Mock
+    private LeaveSeatStudentRepository leaveSeatStudentRepository;
 
     @InjectMocks
     private FixedLeaveSeatScheduleSettingStrategy strategy;
@@ -195,6 +199,47 @@ class FixedLeaveSeatScheduleSettingStrategyTest {
         // Then: LeaveSeat 레코드만 저장되고, 학생들이 조회되어야 한다 (학생 스케줄 링크는 LeaveSeatScheduleSettingStrategy 의 역할)
         verify(leaveSeatRepository, times(1)).save(any(LeaveSeatEntity.class));
         verify(fixedLeaveSeatStudentRepository, times(1)).findAllByFixedLeaveSeat(fixedLeaveSeat);
+    }
+
+    @Test
+    @DisplayName("이석이 이미 존재할 때 누락된 학생만 추가한다 (N+1 쿼리 최적화)")
+    void shouldAddOnlyMissingStudentsWhenLeaveSeatExists() {
+        // Given: 고정 이석에는 3명의 학생이 있고, 기존 이석에는 1명만 등록되어 있을 때
+        LocalDate baseDate = LocalDate.now().plusWeeks(1).with(java.time.DayOfWeek.MONDAY);
+
+        TeacherEntity teacher = createMockTeacher(1L);
+        PlaceEntity place = createMockPlace(1L, "도서관");
+        FixedLeaveSeatEntity fixedLeaveSeat = createMockFixedLeaveSeat(1L, teacher, place,
+                WeekDay.MON, SchoolPeriod.SEVEN_PERIOD, "특별활동");
+
+        StudentEntity student1 = createMockStudent(1L, 1, 1);
+        StudentEntity student2 = createMockStudent(2L, 1, 2);
+        StudentEntity student3 = createMockStudent(3L, 1, 3);
+
+        LeaveSeatEntity existingLeaveSeat = mock(LeaveSeatEntity.class);
+
+        given(fixedLeaveSeatRepository.findAll()).willReturn(List.of(fixedLeaveSeat));
+        given(leaveSeatRepository.findByPlaceAndDayAndPeriod(place, baseDate, SchoolPeriod.SEVEN_PERIOD))
+                .willReturn(Optional.of(existingLeaveSeat));
+        given(fixedLeaveSeatStudentRepository.findAllByFixedLeaveSeat(fixedLeaveSeat))
+                .willReturn(List.of(student1, student2, student3));
+
+        // 기존 이석에는 학생1만 등록되어 있음 (1번 쿼리)
+        given(leaveSeatStudentRepository.findStudentIdsByLeaveSeat(existingLeaveSeat))
+                .willReturn(List.of(1L));
+
+        // When: 스케줄을 설정하면
+        strategy.settingSchedule(baseDate);
+
+        // Then:
+        // 1. 새 LeaveSeat는 저장되지 않음
+        verify(leaveSeatRepository, never()).save(any(LeaveSeatEntity.class));
+
+        // 2. 기존 이석에 등록된 학생 ID 배치 조회 (1번 쿼리)
+        verify(leaveSeatStudentRepository, times(1)).findStudentIdsByLeaveSeat(existingLeaveSeat);
+
+        // 3. 누락된 학생 2명(student2, student3)만 추가됨 (1번 쿼리로 배치 처리)
+        verify(leaveSeatStudentRepository, times(1)).saveAll(any());
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

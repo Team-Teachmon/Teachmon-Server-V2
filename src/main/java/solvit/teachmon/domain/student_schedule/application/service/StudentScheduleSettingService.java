@@ -8,10 +8,7 @@ import solvit.teachmon.domain.management.student.domain.repository.StudentReposi
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategy;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategyComposite;
 import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
-import solvit.teachmon.domain.student_schedule.domain.entity.StudentScheduleEntity;
-import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
 import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
-import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -23,7 +20,6 @@ public class StudentScheduleSettingService {
     private final StudentScheduleSettingStrategyComposite studentScheduleSettingStrategyComposite;
     private final StudentRepository studentRepository;
     private final StudentScheduleGenerator studentScheduleGenerator;
-    private final StudentScheduleRepository studentScheduleRepository;
     private final ScheduleRepository scheduleRepository;
 
     @Transactional
@@ -46,34 +42,29 @@ public class StudentScheduleSettingService {
     public void settingAllTypeSchedule(LocalDate baseDate) {
         List<StudentScheduleSettingStrategy> settingStrategies = studentScheduleSettingStrategyComposite.getAllStrategies();
 
-        // 삭제 범위를 '오늘(LocalDate.now()) ~ baseDate 주의 일요일'로 변경하여
-        // 오늘 이전의 과거 스케줄은 보존하도록 함
-        LocalDate startDay = LocalDate.now();
-        LocalDate endDay = baseDate.with(DayOfWeek.SUNDAY);
+        // baseDate부터 일요일까지의 범위에서 기존 스케줄들을 먼저 삭제
+        deleteFutureSchedulesByDate(baseDate);
 
-        List<StudentScheduleEntity> weekStudentSchedules;
-        if (endDay.isBefore(startDay)) {
-            // 대상 기간이 유효하지 않은 경우(예: baseDate가 오늘보다 이전) 삭제 대상이 없음
-            weekStudentSchedules = List.of();
-        } else {
-            weekStudentSchedules = studentScheduleRepository.findAllByDayBetween(startDay, endDay);
-        }
-
-        // 기존 스케줄(type별) 삭제: 중복 생성을 방지하기 위해 각 전략의 타입에 해당하는 기존 스케줄을 엔티티 삭제로 제거
-        if (!weekStudentSchedules.isEmpty()) {
-            for (StudentScheduleSettingStrategy settingStrategy : settingStrategies) {
-                ScheduleType type = settingStrategy.getScheduleType();
-                for (StudentScheduleEntity studentSchedule : weekStudentSchedules) {
-                    // bulk delete가 아닌 엔티티 삭제를 사용하여 Cascade REMOVE가 동작하도록 함
-                    scheduleRepository.findByStudentScheduleIdAndType(studentSchedule.getId(), type)
-                            .ifPresent(scheduleRepository::delete);
-                }
-            }
-        }
-
-        // 이제 각 전략을 실행하여 새로운 스케줄을 생성
+        // 새로운 스케줄 설정
         for(StudentScheduleSettingStrategy settingStrategy : settingStrategies) {
             settingStrategy.settingSchedule(baseDate);
         }
+    }
+
+    /**
+     * baseDate부터 그 주 일요일까지의 모든 스케줄(AFTER_SCHOOL, SELF_STUDY, LEAVE_SEAT 등)과
+     * 그에 연관된 AfterSchoolScheduleEntity, LeaveSeatScheduleEntity, SelfStudyScheduleEntity 등을 삭제합니다.
+     * CASCADE 설정이 작동하도록 엔티티를 조회한 후 삭제합니다.
+     * @param baseDate 삭제 시작 날짜
+     */
+    private void deleteFutureSchedulesByDate(LocalDate baseDate) {
+        LocalDate endDay = baseDate.with(DayOfWeek.SUNDAY);
+        // 날짜 범위의 모든 Schedule을 조회
+        List<ScheduleEntity> schedulesToDelete = scheduleRepository.findAllByDateRange(baseDate, endDay);
+
+        // 엔티티 기반 삭제로 CASCADE가 작동하도록 함
+        // ScheduleEntity의 CascadeType.REMOVE가 작동하여
+        // LeaveSeatScheduleEntity, AfterSchoolScheduleEntity, SelfStudyScheduleEntity 등이 자동 삭제됨
+        scheduleRepository.deleteAll(schedulesToDelete);
     }
 }
