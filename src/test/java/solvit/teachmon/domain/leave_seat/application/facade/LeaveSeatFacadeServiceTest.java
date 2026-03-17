@@ -401,6 +401,7 @@ class LeaveSeatFacadeServiceTest {
         leaveSeatFacadeService.updateLeaveSeat(leaveSeatId, request, teacher);
 
         // Then: 기존 데이터가 삭제되고 새로운 데이터가 저장된다
+        // LeaveSeatSchedule 삭제 시 cascade = CascadeType.REMOVE로 인해 Schedule도 자동으로 삭제됨
         verify(leaveSeatRepository, times(1)).findById(leaveSeatId);
         verify(placeRepository, times(1)).findById(2L);
         verify(leaveSeat, times(1)).changeLeaveSeatInfo(
@@ -444,9 +445,7 @@ class LeaveSeatFacadeServiceTest {
         given(leaveSeat.getId()).willReturn(leaveSeatId);
 
         LeaveSeatScheduleEntity leaveSeatSchedule = mock(LeaveSeatScheduleEntity.class);
-        ScheduleEntity schedule = mock(ScheduleEntity.class);
         given(leaveSeatSchedule.getLeaveSeat()).willReturn(leaveSeat);
-        given(leaveSeatSchedule.getSchedule()).willReturn(schedule);
 
         given(leaveSeatRepository.findById(leaveSeatId)).willReturn(Optional.of(leaveSeat));
         given(leaveSeatScheduleRepository.findAll()).willReturn(List.of(leaveSeatSchedule));
@@ -455,10 +454,10 @@ class LeaveSeatFacadeServiceTest {
         leaveSeatFacadeService.deleteLeaveSeat(leaveSeatId);
 
         // Then: 이석과 관련 데이터가 삭제된다
+        // LeaveSeatSchedule 삭제 시 cascade = CascadeType.REMOVE로 인해 Schedule도 자동으로 삭제됨
         verify(leaveSeatRepository, times(1)).findById(leaveSeatId);
         verify(leaveSeatScheduleRepository, times(1)).deleteAll(anyList());
         verify(leaveSeatStudentRepository, times(1)).deleteAllByLeaveSeatId(leaveSeatId);
-        verify(scheduleRepository, times(1)).deleteAll(anyList());
         verify(leaveSeatRepository, times(1)).delete(leaveSeat);
     }
 
