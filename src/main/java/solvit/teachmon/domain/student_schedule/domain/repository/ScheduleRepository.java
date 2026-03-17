@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,4 +30,7 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long>,
     @Modifying
     @Query("DELETE FROM ScheduleEntity s WHERE s.id IN :scheduleIds")
     void deleteByIds(@Param("scheduleIds") List<Long> scheduleIds);
+
+    @Query("SELECT s FROM ScheduleEntity s JOIN FETCH s.studentSchedule WHERE s.studentSchedule.day BETWEEN :startDay AND :endDay")
+    List<ScheduleEntity> findAllByDateRange(@Param("startDay") LocalDate startDay, @Param("endDay") LocalDate endDay);
 }
