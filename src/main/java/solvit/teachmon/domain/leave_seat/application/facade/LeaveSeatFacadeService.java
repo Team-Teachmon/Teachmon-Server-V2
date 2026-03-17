@@ -154,13 +154,13 @@ public class LeaveSeatFacadeService {
 
         List<StudentEntity> students = getStudents(request.students());
 
-        // 기존 LeaveSeatStudent, LeaveSeatSchedule, Schedule 삭제
-        deleteLeaveSeatRelatedData(leaveSeatId);
-
         // 새 place/day/period에 현재와 다른 leaveSeat이 있으면 그쪽으로 합치고, 없으면 기존 leaveSeat 수정
         LeaveSeatEntity leaveSeat = leaveSeatRepository.findByPlaceAndDayAndPeriod(place, request.day(), request.period())
                 .filter(found -> !found.getId().equals(leaveSeatId))
                 .orElse(currentLeaveSeat);
+
+        // 기존 관련 데이터 삭제
+        deleteLeaveSeatRelatedData(leaveSeatId);
 
         if (leaveSeat != currentLeaveSeat) {
             // 다른 leaveSeat으로 합쳐지는 경우: 기존 leaveSeat 삭제
@@ -198,13 +198,11 @@ public class LeaveSeatFacadeService {
 
     // leaveSeat 관련 데이터 삭제 메서드
     private void deleteLeaveSeatRelatedData(Long leaveSeatId) {
-        // LeaveSeatSchedule 조회
-        List<LeaveSeatScheduleEntity> leaveSeatSchedules = leaveSeatScheduleRepository.findAll().stream()
-                .filter(ls -> ls.getLeaveSeat().getId().equals(leaveSeatId))
-                .toList();
+        // LeaveSeatSchedule을 직접 조회하여 JPA를 통해 삭제
+        // 이렇게 해야 cascade = CascadeType.REMOVE가 작동하여 Schedule도 함께 삭제됨
+        List<LeaveSeatScheduleEntity> leaveSeatSchedules = leaveSeatScheduleRepository.findAllByLeaveSeatId(leaveSeatId);
+        leaveSeatScheduleRepository.deleteAllInBatch(leaveSeatSchedules);
 
-        // LeaveSeatSchedule 삭제 시 cascade = CascadeType.REMOVE로 인해 Schedule도 자동으로 삭제됨
-        leaveSeatScheduleRepository.deleteAll(leaveSeatSchedules);
         leaveSeatStudentRepository.deleteAllByLeaveSeatId(leaveSeatId);
     }
 
