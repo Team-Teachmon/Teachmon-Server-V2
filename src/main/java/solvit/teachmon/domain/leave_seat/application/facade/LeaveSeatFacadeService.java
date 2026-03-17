@@ -203,14 +203,9 @@ public class LeaveSeatFacadeService {
                 .filter(ls -> ls.getLeaveSeat().getId().equals(leaveSeatId))
                 .toList();
 
-        // Schedule 삭제
-        List<ScheduleEntity> schedules = leaveSeatSchedules.stream()
-                .map(LeaveSeatScheduleEntity::getSchedule)
-                .toList();
-
+        // LeaveSeatSchedule 삭제 시 cascade = CascadeType.REMOVE로 인해 Schedule도 자동으로 삭제됨
         leaveSeatScheduleRepository.deleteAll(leaveSeatSchedules);
         leaveSeatStudentRepository.deleteAllByLeaveSeatId(leaveSeatId);
-        scheduleRepository.deleteAll(schedules);
     }
 
     private List<StudentEntity> getStudents(List<Long> studentIds) {
