@@ -1,6 +1,7 @@
 package solvit.teachmon.domain.leave_seat.application.facade;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LeaveSeatFacadeService {
@@ -161,29 +163,45 @@ public class LeaveSeatFacadeService {
 
         // 기존 관련 데이터 삭제
         deleteLeaveSeatRelatedData(leaveSeatId);
+        log.info("✓ 기존 이석 관련 데이터 삭제 완료");
 
         if (leaveSeat != currentLeaveSeat) {
+            log.info("→ 다른 LeaveSeat으로 병합 - 기존 LeaveSeat 삭제");
             // 다른 leaveSeat으로 합쳐지는 경우: 기존 leaveSeat 삭제
             leaveSeatRepository.delete(currentLeaveSeat);
         } else {
+            log.info("→ LeaveSeat 정보 업데이트");
             // 일반 수정: 기존 leaveSeat 정보 업데이트
             leaveSeat.changeLeaveSeatInfo(teacher, place, request.day(), request.period(), request.cause());
         }
 
         // 새로운 LeaveSeatStudent, LeaveSeatSchedule, Schedule 저장
+        log.info("→ 새로운 이석 관련 데이터 저장");
         saveLeaveSeatRelatedData(leaveSeat, students, request.day(), request.period());
+
+        log.info("=== 이석 수정 완료 ===");
     }
 
     @Transactional
     public void deleteLeaveSeat(Long leaveSeatId) {
+        log.info("=== 이석 삭제 시작 === leaveSeatId: {}", leaveSeatId);
+
         LeaveSeatEntity leaveSeat = leaveSeatRepository.findById(leaveSeatId)
                 .orElseThrow(() -> new LeaveSeatValueInvalidException("이석을 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
 
+        log.info("✓ 이석 조회 성공: {}", leaveSeat.getId());
+
         // 관련 데이터 삭제
+        log.info("→ 이석 관련 데이터 삭제 시작");
         deleteLeaveSeatRelatedData(leaveSeatId);
+        log.info("✓ 이석 관련 데이터 삭제 완료");
 
         // LeaveSeat 삭제
+        log.info("→ 이석 엔티티 삭제 시작");
         leaveSeatRepository.delete(leaveSeat);
+        log.info("✓ 이석 엔티티 삭제 완료");
+
+        log.info("=== 이석 삭제 완료 ===");
     }
 
     @Transactional(readOnly = true)
@@ -198,12 +216,43 @@ public class LeaveSeatFacadeService {
 
     // leaveSeat 관련 데이터 삭제 메서드
     private void deleteLeaveSeatRelatedData(Long leaveSeatId) {
-        // LeaveSeatSchedule을 직접 조회하여 JPA를 통해 삭제
-        // 이렇게 해야 cascade = CascadeType.REMOVE가 작동하여 Schedule도 함께 삭제됨
-        List<LeaveSeatScheduleEntity> leaveSeatSchedules = leaveSeatScheduleRepository.findAllByLeaveSeatId(leaveSeatId);
-        leaveSeatScheduleRepository.deleteAllInBatch(leaveSeatSchedules);
+        log.info("  [Step 1] LeaveSeatSchedule 조회 시작 - leaveSeatId: {}", leaveSeatId);
 
-        leaveSeatStudentRepository.deleteAllByLeaveSeatId(leaveSeatId);
+        try {
+            List<LeaveSeatScheduleEntity> leaveSeatSchedules = leaveSeatScheduleRepository.findAllByLeaveSeatId(leaveSeatId);
+            log.info("  ✓ LeaveSeatSchedule 조회 완료 - 개수: {}", leaveSeatSchedules.size());
+
+            for (LeaveSeatScheduleEntity lss : leaveSeatSchedules) {
+                log.info("    - LeaveSeatSchedule ID: {}, Schedule ID: {}", lss.getId(), lss.getSchedule().getId());
+            }
+
+            if (!leaveSeatSchedules.isEmpty()) {
+                log.info("  [Step 2] LeaveSeatSchedule 개별 삭제 시작 (CASCADE 작동을 위해)");
+                // ⭐ 중요: deleteAllInBatch 대신 개별 delete 사용
+                // deleteAllInBatch는 CASCADE를 작동시키지 않으므로,
+                // 각 엔티티를 개별적으로 삭제해야 JPA의 CASCADE가 작동함
+                for (LeaveSeatScheduleEntity lss : leaveSeatSchedules) {
+                    log.info("    → Schedule ID: {} 삭제 중...", lss.getSchedule().getId());
+                    leaveSeatScheduleRepository.delete(lss);  // ✅ CASCADE가 작동함
+                    log.info("    ✓ Schedule ID: {} 삭제 완료", lss.getSchedule().getId());
+                }
+                log.info("  ✓ LeaveSeatSchedule 개별 삭제 완료");
+            } else {
+                log.warn("  ⚠ 삭제할 LeaveSeatSchedule이 없습니다");
+            }
+        } catch (Exception e) {
+            log.error("  ✗ LeaveSeatSchedule 삭제 중 에러 발생", e);
+            throw e;
+        }
+
+        log.info("  [Step 3] LeaveSeatStudent 삭제 시작 - leaveSeatId: {}", leaveSeatId);
+        try {
+            leaveSeatStudentRepository.deleteAllByLeaveSeatId(leaveSeatId);
+            log.info("  ✓ LeaveSeatStudent 삭제 완료");
+        } catch (Exception e) {
+            log.error("  ✗ LeaveSeatStudent 삭제 중 에러 발생", e);
+            throw e;
+        }
     }
 
     private List<StudentEntity> getStudents(List<Long> studentIds) {
