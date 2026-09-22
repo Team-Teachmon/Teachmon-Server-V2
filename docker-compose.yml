@@ -12,6 +12,11 @@ services:
       - mysql-data:/var/lib/mysql
     networks:
       - backend
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis
@@ -27,6 +32,7 @@ services:
   teachmon:
     image: teachmon08/teachmon-be:latest
     container_name: teachmon-container
+    restart: unless-stopped
     ports:
       - "8080:8080"
     env_file:
@@ -36,8 +42,10 @@ services:
     networks:
       - backend
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   prometheus:
     image: prom/prometheus:latest
