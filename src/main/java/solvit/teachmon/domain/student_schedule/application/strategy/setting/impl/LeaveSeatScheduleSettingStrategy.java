@@ -40,15 +40,8 @@ public class LeaveSeatScheduleSettingStrategy implements StudentScheduleSettingS
                     .map(LeaveSeatStudentEntity::getStudent)
                     .toList();
 
-            // 이석 등록 시점에 학생 스케줄이 이미 존재해 즉시 반영된 학생은 제외한다.
-            // (미리 등록된 이석이 스케줄 생성 배치에서 중복으로 연결되는 것을 방지)
-            List<Long> alreadyLinkedStudentScheduleIds = leaveSeatScheduleRepository.findLinkedStudentScheduleIdsByLeaveSeat(leaveSeat);
-
             List<StudentScheduleEntity> studentSchedules = studentScheduleRepository
-                    .findAllByStudentsAndDayAndPeriod(students, leaveSeat.getDay(), leaveSeat.getPeriod())
-                    .stream()
-                    .filter(studentSchedule -> !alreadyLinkedStudentScheduleIds.contains(studentSchedule.getId()))
-                    .toList();
+                    .findAllByStudentsAndDayAndPeriod(students, leaveSeat.getDay(), leaveSeat.getPeriod());
 
             for (StudentScheduleEntity studentSchedule : studentSchedules) {
                 ScheduleEntity newSchedule = createNewSchedule(studentSchedule);
