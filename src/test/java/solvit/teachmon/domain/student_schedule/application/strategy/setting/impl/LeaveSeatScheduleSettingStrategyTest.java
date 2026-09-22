@@ -206,6 +206,39 @@ class LeaveSeatScheduleSettingStrategyTest {
                 .containsOnly(leaveSeat);
     }
 
+    @Test
+    @DisplayName("이미 이석 스케줄이 연결된 학생은 다시 연결하지 않는다")
+    void shouldSkipStudentsAlreadyLinkedToLeaveSeat() {
+        // Given: 학생1은 이석 생성 시 학생 스케줄이 이미 있어 즉시 연결되었고, 학생2는 아직 연결되지 않았을 때
+        LocalDate baseDate = LocalDate.now().plusWeeks(1).with(java.time.DayOfWeek.MONDAY);
+
+        StudentEntity student1 = createMockStudent(1L, 1, 1);
+        StudentEntity student2 = createMockStudent(2L, 1, 2);
+
+        LeaveSeatStudentEntity leaveSeatStudent1 = createMockLeaveSeatStudent(student1);
+        LeaveSeatStudentEntity leaveSeatStudent2 = createMockLeaveSeatStudent(student2);
+
+        LeaveSeatEntity leaveSeat = createMockLeaveSeat(1L, baseDate, SchoolPeriod.SEVEN_PERIOD,
+                List.of(leaveSeatStudent1, leaveSeatStudent2));
+
+        StudentScheduleEntity studentSchedule1 = createMockStudentSchedule(1L, student1, baseDate, SchoolPeriod.SEVEN_PERIOD);
+        StudentScheduleEntity studentSchedule2 = createMockStudentSchedule(2L, student2, baseDate, SchoolPeriod.SEVEN_PERIOD);
+
+        given(leaveSeatRepository.findAllFromDate(baseDate)).willReturn(List.of(leaveSeat));
+        given(leaveSeatScheduleRepository.findLinkedStudentScheduleIdsByLeaveSeat(leaveSeat)).willReturn(List.of(1L));
+        given(studentScheduleRepository.findAllByStudentsAndDayAndPeriod(
+                List.of(student1, student2), baseDate, SchoolPeriod.SEVEN_PERIOD))
+                .willReturn(List.of(studentSchedule1, studentSchedule2));
+        given(scheduleRepository.findLastStackOrderByStudentScheduleId(2L)).willReturn(0);
+
+        // When: 스케줄을 설정하면
+        strategy.settingSchedule(baseDate);
+
+        // Then: 이미 연결된 학생1은 건너뛰고, 학생2만 새로 연결한다
+        verify(scheduleRepository, never()).findLastStackOrderByStudentScheduleId(1L);
+        verify(leaveSeatScheduleRepository, times(1)).save(any(LeaveSeatScheduleEntity.class));
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private StudentEntity createMockStudent(Long id, Integer grade, Integer classNumber) {
