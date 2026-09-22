@@ -35,11 +35,13 @@ public class LeaveSeatController {
     ) {
         TeacherEntity teacher = teachmonUserDetails.teacherEntity();
 
-        leaveSeatFacadeService.createLeaveSeat(request, teacher);
+        boolean registeredImmediately = leaveSeatFacadeService.createLeaveSeat(request, teacher);
 
         return ResponseEntity
                 .ok()
-                .body("이석을 작성하였습니다.");
+                .body(registeredImmediately
+                        ? "이석을 작성하였습니다."
+                        : "아직 학생 스케줄이 생성되지 않은 주차라 이석이 예약되었습니다. 스케줄 생성 시 자동으로 반영됩니다.");
     }
 
     @GetMapping
@@ -73,11 +75,13 @@ public class LeaveSeatController {
     ) {
         TeacherEntity teacher = teachmonUserDetails.teacherEntity();
 
-        leaveSeatFacadeService.updateLeaveSeat(leaveSeatId, request, teacher);
+        boolean registeredImmediately = leaveSeatFacadeService.updateLeaveSeat(leaveSeatId, request, teacher);
 
         return ResponseEntity
                 .ok()
-                .body("이석 수정이 완료되었습니다");
+                .body(registeredImmediately
+                        ? "이석 수정이 완료되었습니다"
+                        : "아직 학생 스케줄이 생성되지 않은 주차라 이석이 예약되었습니다. 스케줄 생성 시 자동으로 반영됩니다.");
     }
 
     @DeleteMapping("/{leaveseat_id}")
