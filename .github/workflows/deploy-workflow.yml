@@ -79,6 +79,7 @@ jobs:
             --push .
 
       - name: Deploy
+        working-directory: /home/teachmon
         run: |
           echo "${{ secrets.ENV }}" > .env
 
