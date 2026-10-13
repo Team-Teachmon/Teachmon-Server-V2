@@ -1,6 +1,7 @@
 package solvit.teachmon.domain.student_schedule.application.strategy.setting.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import solvit.teachmon.domain.branch.domain.entity.BranchEntity;
 import solvit.teachmon.domain.branch.domain.repository.BranchRepository;
@@ -19,12 +20,14 @@ import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleReposit
 import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.repository.schedules.SelfStudyScheduleRepository;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
 import static solvit.teachmon.domain.place.domain.entity.PlaceEntity.calculateNextClassNumber;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class SelfStudyScheduleSettingStrategy implements StudentScheduleSettingStrategy {
@@ -68,6 +71,47 @@ public class SelfStudyScheduleSettingStrategy implements StudentScheduleSettingS
         }
     }
 
+    /**
+     * 누락된 자습 스케줄 복구 (일회성)
+     * fromDate 주의 fromDate 이후(포함) 자습 중 SELF_STUDY 스케줄이 없는 학생에게만 생성하며,
+     * 이미 들어간 방과후/이석 등을 덮지 않도록 스택 맨 아래에 넣는다.
+     */
+    public int restoreSchedule(LocalDate fromDate) {
+        List<BranchEntity> branches = branchRepository.findAllOverlapping(fromDate, fromDate.with(DayOfWeek.SUNDAY));
+
+        int restoredCount = 0;
+        for(BranchEntity branch : branches) {
+            for(SelfStudyEntity selfStudy : selfStudyRepository.findAllByBranch(branch)) {
+                if(isOutOfBranchPeriod(calculateSelfStudyDay(selfStudy, fromDate), branch))
+                    continue;
+                if(isBeforeSelfStudy(selfStudy, fromDate))
+                    continue;
+
+                for(StudentScheduleEntity studentSchedule : findStudentScheduleBySelfStudy(selfStudy, fromDate)) {
+                    if(scheduleRepository.existsByStudentScheduleIdAndType(studentSchedule.getId(), ScheduleType.SELF_STUDY))
+                        continue;
+
+                    PlaceEntity place;
+                    try {
+                        place = findSelfStudyPlace(studentSchedule);
+                    } catch (NoAvailablePlaceException e) {
+                        log.warn("자습 장소 배정 실패 - studentScheduleId: {}, day: {}, period: {}",
+                                studentSchedule.getId(), studentSchedule.getDay(), studentSchedule.getPeriod());
+                        continue;
+                    }
+
+                    Integer firstStackOrder = scheduleRepository.findFirstStackOrderByStudentScheduleId(studentSchedule.getId());
+                    ScheduleEntity bottomSchedule = ScheduleEntity.createBottomStudentSchedule(studentSchedule, firstStackOrder, ScheduleType.SELF_STUDY);
+                    scheduleRepository.save(bottomSchedule);
+                    createSelfStudySchedule(bottomSchedule, selfStudy, place);
+                    restoredCount++;
+                }
+            }
+        }
+
+        return restoredCount;
+    }
+
     private boolean isOutOfBranchPeriod(LocalDate day, BranchEntity branch) {
         return day.isBefore(branch.getStartDay()) || day.isAfter(branch.getEndDay());
     }
@@ -89,8 +133,17 @@ public class SelfStudyScheduleSettingStrategy implements StudentScheduleSettingS
 
     private void settingSelfStudySchedule(List<StudentScheduleEntity> studentSchedules, SelfStudyEntity selfStudy) {
         for(StudentScheduleEntity studentSchedule : studentSchedules) {
+            PlaceEntity place;
+            try {
+                place = findSelfStudyPlace(studentSchedule);
+            } catch (NoAvailablePlaceException e) {
+                // 장소 하나를 못 찾았다고 전체 스케줄 설정이 롤백되지 않도록 해당 건만 건너뜀
+                log.warn("자습 장소 배정 실패 - studentScheduleId: {}, day: {}, period: {}",
+                        studentSchedule.getId(), studentSchedule.getDay(), studentSchedule.getPeriod());
+                continue;
+            }
             ScheduleEntity newSchedule = createNewSchedule(studentSchedule);
-            createSelfStudySchedule(newSchedule, selfStudy, findSelfStudyPlace(studentSchedule));
+            createSelfStudySchedule(newSchedule, selfStudy, place);
         }
     }
 
@@ -101,6 +154,12 @@ public class SelfStudyScheduleSettingStrategy implements StudentScheduleSettingS
         Integer targetPoint = student.getClassNumber();
         for(int count = 0; count < 4; count++) {
             PlaceEntity place = placesMap.get(targetPoint);
+
+            // 해당 반 교실이 존재하지 않으면 다음 반으로 넘어감
+            if(place == null) {
+                targetPoint = calculateNextClassNumber(targetPoint);
+                continue;
+            }
 
             if(!placeRepository.checkPlaceAvailability(
                     studentSchedule.getDay(), studentSchedule.getPeriod(), place
