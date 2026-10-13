@@ -39,7 +39,7 @@ jobs:
   build-and-deploy:
     name: Build and Deploy
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code
@@ -78,22 +78,17 @@ jobs:
             -t ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPOSITORY }}:latest \
             --push .
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SERVER_PASSWORD }}
-          port: ${{ secrets.SERVER_PORT }}
-          script: |
-            echo "${{ secrets.ENV }}" > .env
+      - name: Deploy
+        working-directory: /home/teachmon
+        run: |
+          echo "${{ secrets.ENV }}" > .env
 
-            docker compose down
-            docker system prune -f
-            docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPOSITORY }}:latest
-            docker compose up -d
+          docker compose down
+          docker system prune -f
+          docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPOSITORY }}:latest
+          docker compose up -d
 
-            sleep 15
-            docker image prune -f
+          sleep 15
+          docker image prune -f
 
-            echo "✅ 배포 완료"
+          echo "✅ 배포 완료"

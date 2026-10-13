@@ -32,7 +32,6 @@ import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
 import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.repository.schedules.LeaveSeatScheduleRepository;
-import solvit.teachmon.domain.student_schedule.exception.StudentScheduleNotFoundException;
 import solvit.teachmon.domain.user.domain.entity.TeacherEntity;
 import solvit.teachmon.global.enums.SchoolPeriod;
 
@@ -223,10 +222,10 @@ class LeaveSeatFacadeServiceTest {
     }
 
     @Test
-    @DisplayName("학생 스케줄이 없을 때 이석 생성 시 예외가 발생한다")
-    void shouldThrowExceptionWhenStudentScheduleNotFound() {
-        // Given: 학생 스케줄이 없을 때
-        LocalDate day = LocalDate.now().plusDays(1);
+    @DisplayName("학생 스케줄이 아직 생성되지 않은 미래 주차라면 이석이 예약(부분 반영)된다")
+    void shouldDeferLeaveSeatWhenStudentScheduleNotFullyGenerated() {
+        // Given: 학생 스케줄이 일부만 생성되어 있을 때 (아직 배치가 돌지 않은 미래 주차)
+        LocalDate day = LocalDate.now().plusWeeks(2);
         LeaveSeatCreateRequest request = new LeaveSeatCreateRequest(
                 day,
                 SchoolPeriod.SEVEN_PERIOD,
@@ -251,13 +250,18 @@ class LeaveSeatFacadeServiceTest {
                 .willReturn(Optional.empty());
         given(leaveSeatRepository.save(any(LeaveSeatEntity.class))).willReturn(leaveSeat);
         given(studentScheduleRepository.findAllByStudentsAndDayAndPeriod(students, day, SchoolPeriod.SEVEN_PERIOD))
-                .willReturn(List.of(schedule1)); // 1개만 반환
-        lenient().when(schedule1.getId()).thenReturn(1L);
-        lenient().when(scheduleRepository.findLastStackOrderByStudentScheduleId(1L)).thenReturn(0);
+                .willReturn(List.of(schedule1)); // 1개만 반환 (나머지는 아직 미생성)
+        given(schedule1.getId()).willReturn(1L);
+        given(scheduleRepository.findLastStackOrderByStudentScheduleId(1L)).willReturn(0);
 
-        // When & Then: 이석 생성 시 예외가 발생한다
-        assertThatThrownBy(() -> leaveSeatFacadeService.createLeaveSeat(request, teacher))
-                .isInstanceOf(StudentScheduleNotFoundException.class);
+        // When: 이석을 생성하면
+        boolean registeredImmediately = leaveSeatFacadeService.createLeaveSeat(request, teacher);
+
+        // Then: 예외 없이 이석/학생 매핑은 저장되고, 생성된 스케줄 만큼만 즉시 반영된 뒤 false를 반환한다
+        // (나머지는 LeaveSeatScheduleSettingStrategy가 해당 주 스케줄 생성 시 자동으로 반영)
+        assertThat(registeredImmediately).isFalse();
+        verify(leaveSeatStudentRepository, times(1)).saveAll(anyList());
+        verify(scheduleRepository, times(1)).saveAll(anyList());
     }
 
     @Test

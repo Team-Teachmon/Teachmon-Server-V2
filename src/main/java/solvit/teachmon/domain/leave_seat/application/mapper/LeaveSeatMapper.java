@@ -53,8 +53,10 @@ public interface LeaveSeatMapper {
     ) {
         return students.stream()
                 .map(student -> {
+                    // 아직 학생 스케줄이 생성되지 않은 미래 주차라 이석이 예약 상태로 대기 중인 학생은
+                    // studentLastScheduleTypes에 아예 존재하지 않는다.
                     ScheduleType scheduleType = studentLastScheduleTypes.get(student.getId());
-                    String state = scheduleType.name();
+                    String state = scheduleType != null ? scheduleType.name() : "PENDING";
 
                     return StudentInfoResponse.builder()
                             .id(student.getId())

@@ -28,6 +28,13 @@ public interface BranchRepository extends JpaRepository<BranchEntity, Long> {
 """)
     Optional<BranchEntity> findByDay(@Param("today") LocalDate today);
 
+    @Query("""
+    select b
+    from BranchEntity b
+    where b.startDay <= :endDay and b.endDay >= :startDay
+""")
+    List<BranchEntity> findAllOverlapping(@Param("startDay") LocalDate startDay, @Param("endDay") LocalDate endDay);
+
     @Query("SELECT b FROM BranchEntity b WHERE b.afterSchoolEndDay = :date")
     Optional<BranchEntity> findByAfterSchoolDate(@Param("date") LocalDate date);
     

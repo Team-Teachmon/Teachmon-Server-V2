@@ -30,7 +30,6 @@ import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
 import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.repository.schedules.LeaveSeatScheduleRepository;
-import solvit.teachmon.domain.student_schedule.exception.StudentScheduleNotFoundException;
 import solvit.teachmon.domain.user.domain.entity.TeacherEntity;
 import solvit.teachmon.global.enums.SchoolPeriod;
 
@@ -51,8 +50,13 @@ public class LeaveSeatFacadeService {
     private final StudentRepository studentRepository;
     private final LeaveSeatMapper leaveSeatMapper;
 
+    /**
+     * @return 대상 학생 전원의 학생 스케줄이 이미 생성되어 있어 이석이 즉시 반영되었으면 true,
+     *         아직 학생 스케줄이 생성되지 않은 미래 주차라 일부(또는 전부) 반영이 미뤄졌으면 false.
+     *         미뤄진 부분은 해당 주 스케줄 생성 배치 시점에 {@code LeaveSeatScheduleSettingStrategy}가 자동으로 반영한다.
+     */
     @Transactional
-    public void createLeaveSeat(LeaveSeatCreateRequest request, TeacherEntity teacher) {
+    public boolean createLeaveSeat(LeaveSeatCreateRequest request, TeacherEntity teacher) {
         PlaceEntity place = placeRepository.findById(request.placeId())
                 .orElseThrow(PlaceNotFoundException::new);
 
@@ -62,14 +66,15 @@ public class LeaveSeatFacadeService {
         LeaveSeatEntity leaveSeat = leaveSeatRepository.findByPlaceAndDayAndPeriod(place, request.day(), request.period())
                 .orElseGet(() -> saveLeaveSeat(request, teacher, place));
 
-        saveLeaveSeatRelatedData(leaveSeat, students, request.day(), request.period());
+        return saveLeaveSeatRelatedData(leaveSeat, students, request.day(), request.period());
     }
 
     // leaveSeat 관련 데이터 저장 메서드
-    private void saveLeaveSeatRelatedData(LeaveSeatEntity leaveSeat, List<StudentEntity> students, LocalDate day, SchoolPeriod period) {
+    private boolean saveLeaveSeatRelatedData(LeaveSeatEntity leaveSeat, List<StudentEntity> students, LocalDate day, SchoolPeriod period) {
         saveLeaveSeatStudent(leaveSeat, students);
-        List<StudentScheduleEntity> studentSchedules = getStudentSchedules(students, day, period);
+        List<StudentScheduleEntity> studentSchedules = findRegisteredStudentSchedules(students, day, period);
         saveLeaveSeatSchedules(studentSchedules, leaveSeat);
+        return studentSchedules.size() == students.size();
     }
 
     // LeaveSeatStudent 저장 메서드
@@ -146,8 +151,11 @@ public class LeaveSeatFacadeService {
         return leaveSeatMapper.toDetailResponse(leaveSeat, students, studentLastScheduleTypes);
     }
 
+    /**
+     * @return {@link #createLeaveSeat}와 동일하게, 수정된 대상 학생 전원의 학생 스케줄이 이미 생성되어 있으면 true.
+     */
     @Transactional
-    public void updateLeaveSeat(Long leaveSeatId, LeaveSeatUpdateRequest request, TeacherEntity teacher) {
+    public boolean updateLeaveSeat(Long leaveSeatId, LeaveSeatUpdateRequest request, TeacherEntity teacher) {
         LeaveSeatEntity currentLeaveSeat = leaveSeatRepository.findById(leaveSeatId)
                 .orElseThrow(() -> new LeaveSeatValueInvalidException("이석을 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
 
@@ -177,9 +185,10 @@ public class LeaveSeatFacadeService {
 
         // 새로운 LeaveSeatStudent, LeaveSeatSchedule, Schedule 저장
         log.info("→ 새로운 이석 관련 데이터 저장");
-        saveLeaveSeatRelatedData(leaveSeat, students, request.day(), request.period());
+        boolean registeredImmediately = saveLeaveSeatRelatedData(leaveSeat, students, request.day(), request.period());
 
         log.info("=== 이석 수정 완료 ===");
+        return registeredImmediately;
     }
 
     @Transactional
@@ -263,11 +272,12 @@ public class LeaveSeatFacadeService {
         return students;
     }
 
-    private List<StudentScheduleEntity> getStudentSchedules(List<StudentEntity> students, LocalDate day, SchoolPeriod period) {
-        List<StudentScheduleEntity> studentSchedules = studentScheduleRepository.findAllByStudentsAndDayAndPeriod(students, day, period);
-        if (studentSchedules.size() != students.size()) {
-            throw new StudentScheduleNotFoundException();
-        }
-        return studentSchedules;
+    /**
+     * 대상 학생들의 학생 스케줄 중 이미 생성되어 있는 것만 조회한다.
+     * 아직 스케줄 생성 배치가 돌지 않은 미래 주차라면 일부 또는 전체가 조회되지 않을 수 있으며,
+     * 이 경우 이석은 그 학생 스케줄이 생성될 때 {@code LeaveSeatScheduleSettingStrategy}에 의해 자동으로 반영된다.
+     */
+    private List<StudentScheduleEntity> findRegisteredStudentSchedules(List<StudentEntity> students, LocalDate day, SchoolPeriod period) {
+        return studentScheduleRepository.findAllByStudentsAndDayAndPeriod(students, day, period);
     }
 }

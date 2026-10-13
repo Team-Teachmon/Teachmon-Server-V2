@@ -7,7 +7,6 @@ import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolBusiness
 import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolRepository;
 import solvit.teachmon.domain.branch.domain.entity.BranchEntity;
 import solvit.teachmon.domain.branch.domain.repository.BranchRepository;
-import solvit.teachmon.domain.branch.exception.BranchNotFoundException;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategy;
 import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.StudentScheduleEntity;
@@ -37,24 +36,36 @@ public class AfterSchoolScheduleSettingStrategy implements StudentScheduleSettin
 
     @Override
     public void settingSchedule(LocalDate baseDate) {
-        BranchEntity branch = branchRepository.findByDay(baseDate)
-                .orElseThrow(BranchNotFoundException::new);
+        // baseDate(그 주의 월요일)가 속한 분기가 아니라, baseDate ~ 일요일까지 걸쳐있는
+        // 모든 분기를 가져온다. 분기 전환 주에는 이 기간에 분기가 2개 걸릴 수 있다.
+        List<BranchEntity> branches = branchRepository.findAllOverlapping(baseDate, baseDate.plusDays(6));
 
-        List<AfterSchoolEntity> afterSchools = afterSchoolRepository.findAllByBranch(branch);
+        for (BranchEntity branch : branches) {
+            List<AfterSchoolEntity> afterSchools = afterSchoolRepository.findAllByBranch(branch);
 
-        for(AfterSchoolEntity afterSchool : afterSchools) {
-            // 종료되었는지 확인
-            if(afterSchool.getIsEnd())
-                continue;
-            // 출장이면 넘어가기
-            else if(afterSchoolBusinessTripRepository.existsByAfterSchoolAndDay(afterSchool, calculateAfterSchoolDay(afterSchool, baseDate)))
-                continue;
-            // 이전 날짜면 넘어가기
-            else if(isBeforeAfterSchool(afterSchool, baseDate))
-                continue;
-            List<StudentScheduleEntity> studentSchedules = findStudentScheduleByAfterSchool(afterSchool, baseDate);
-            settingAfterSchoolSchedule(studentSchedules, afterSchool);
+            for (AfterSchoolEntity afterSchool : afterSchools) {
+                LocalDate afterSchoolDay = calculateAfterSchoolDay(afterSchool, baseDate);
+
+                // 종료되었는지 확인
+                if (afterSchool.getIsEnd())
+                    continue;
+                // 이번 주에 해당하는 날짜가 이 분기 기간 밖이면 넘어가기
+                else if (isOutOfBranchPeriod(afterSchoolDay, branch))
+                    continue;
+                // 출장이면 넘어가기
+                else if (afterSchoolBusinessTripRepository.existsByAfterSchoolAndDay(afterSchool, afterSchoolDay))
+                    continue;
+                // 이전 날짜면 넘어가기
+                else if (isBeforeAfterSchool(afterSchool, baseDate))
+                    continue;
+                List<StudentScheduleEntity> studentSchedules = findStudentScheduleByAfterSchool(afterSchool, baseDate);
+                settingAfterSchoolSchedule(studentSchedules, afterSchool);
+            }
         }
+    }
+
+    private boolean isOutOfBranchPeriod(LocalDate day, BranchEntity branch) {
+        return day.isBefore(branch.getStartDay()) || day.isAfter(branch.getEndDay());
     }
 
     private Boolean isBeforeAfterSchool(AfterSchoolEntity afterSchool, LocalDate baseDate) {
