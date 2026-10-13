@@ -1,6 +1,7 @@
 package solvit.teachmon.domain.student_schedule.application.strategy.setting.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
 import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
@@ -24,6 +25,7 @@ import java.util.Map;
 
 import static solvit.teachmon.domain.place.domain.entity.PlaceEntity.calculateNextClassNumber;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class AdditionalSelfStudyScheduleSettingStrategy implements StudentScheduleSettingStrategy {
@@ -71,8 +73,17 @@ public class AdditionalSelfStudyScheduleSettingStrategy implements StudentSchedu
             AdditionalSelfStudyEntity additionalSelfStudy
     ) {
         for(StudentScheduleEntity studentSchedule : studentSchedules) {
+            PlaceEntity place;
+            try {
+                place = findAdditionalSelfStudyPlace(studentSchedule);
+            } catch (NoAvailablePlaceException e) {
+                // 장소 하나를 못 찾았다고 전체 스케줄 설정이 롤백되지 않도록 해당 건만 건너뜀
+                log.warn("추가 자습 장소 배정 실패 - studentScheduleId: {}, day: {}, period: {}",
+                        studentSchedule.getId(), studentSchedule.getDay(), studentSchedule.getPeriod());
+                continue;
+            }
             ScheduleEntity newSchedule = createNewSchedule(studentSchedule);
-            createAdditionalSelfStudySchedule(newSchedule, additionalSelfStudy, findAdditionalSelfStudyPlace(studentSchedule));
+            createAdditionalSelfStudySchedule(newSchedule, additionalSelfStudy, place);
         }
     }
 

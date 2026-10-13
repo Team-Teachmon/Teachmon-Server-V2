@@ -7,6 +7,7 @@ import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
 import solvit.teachmon.domain.management.student.domain.repository.StudentRepository;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategy;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategyComposite;
+import solvit.teachmon.domain.student_schedule.application.strategy.setting.impl.SelfStudyScheduleSettingStrategy;
 import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
 
@@ -21,6 +22,7 @@ public class StudentScheduleSettingService {
     private final StudentRepository studentRepository;
     private final StudentScheduleGenerator studentScheduleGenerator;
     private final ScheduleRepository scheduleRepository;
+    private final SelfStudyScheduleSettingStrategy selfStudyScheduleSettingStrategy;
 
     @Transactional
     public void createNewStudentSchedule(LocalDate baseDate) {
@@ -49,6 +51,12 @@ public class StudentScheduleSettingService {
         for(StudentScheduleSettingStrategy settingStrategy : settingStrategies) {
             settingStrategy.settingSchedule(baseDate);
         }
+    }
+
+    // 2026-10-11 스케줄러 실패로 누락된 자습 스케줄 복구용 (복구 완료 후 제거)
+    @Transactional
+    public int restoreSelfStudySchedule(LocalDate fromDate) {
+        return selfStudyScheduleSettingStrategy.restoreSchedule(fromDate);
     }
 
     /**
