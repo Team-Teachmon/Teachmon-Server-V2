@@ -23,6 +23,12 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long>,
     @Query("SELECT COUNT(s) > 0 FROM ScheduleEntity s WHERE s.studentSchedule.id = :studentScheduleId AND s.type = :type")
     boolean existsByStudentScheduleIdAndType(@Param("studentScheduleId") Long studentScheduleId, @Param("type") ScheduleType type);
 
+    @Query("SELECT COUNT(s) > 0 FROM ScheduleEntity s WHERE s.studentSchedule.id = :studentScheduleId AND s.type <> :type")
+    boolean existsByStudentScheduleIdAndTypeNot(@Param("studentScheduleId") Long studentScheduleId, @Param("type") ScheduleType type);
+
+    @Query("SELECT COUNT(s) FROM ScheduleEntity s WHERE s.type = :type AND s.studentSchedule.day BETWEEN :startDay AND :endDay")
+    long countByTypeAndDayBetween(@Param("type") ScheduleType type, @Param("startDay") LocalDate startDay, @Param("endDay") LocalDate endDay);
+
     @Modifying
     @Query("DELETE FROM ScheduleEntity s WHERE s.studentSchedule.id = :studentScheduleId AND s.type = :type")
     void deleteByStudentScheduleIdAndType(@Param("studentScheduleId") Long studentScheduleId, @Param("type") ScheduleType type);

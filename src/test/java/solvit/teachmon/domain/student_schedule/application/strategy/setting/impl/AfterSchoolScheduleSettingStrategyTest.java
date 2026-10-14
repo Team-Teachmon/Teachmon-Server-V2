@@ -3,6 +3,7 @@ package solvit.teachmon.domain.student_schedule.application.strategy.setting.imp
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -14,8 +15,11 @@ import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolReposito
 import solvit.teachmon.domain.branch.domain.entity.BranchEntity;
 import solvit.teachmon.domain.branch.domain.repository.BranchRepository;
 import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
+import solvit.teachmon.domain.student_schedule.application.dto.ScheduleRestoreResult;
+import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.StudentScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.schedules.AfterSchoolScheduleEntity;
+import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
 import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.repository.schedules.AfterSchoolScheduleRepository;
@@ -25,6 +29,7 @@ import solvit.teachmon.global.enums.WeekDay;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -36,6 +41,9 @@ import static org.mockito.Mockito.verify;
 @MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("방과후 스케줄 설정 전략 테스트")
 class AfterSchoolScheduleSettingStrategyTest {
+
+    // 2026-10-14 (수)
+    private static final LocalDate RESTORE_DAY = LocalDate.of(2026, 10, 14);
 
     @Mock
     private ScheduleRepository scheduleRepository;
@@ -132,5 +140,80 @@ class AfterSchoolScheduleSettingStrategyTest {
 
         // Then: 분기 기간 밖의 날짜이므로 스케줄이 생성되지 않아야 한다
         verify(afterSchoolScheduleRepository, never()).save(any(AfterSchoolScheduleEntity.class));
+    }
+
+
+    @Test
+    @DisplayName("방과후 복구시 자습만 있는 학생에게는 방과후 스케줄을 자습 위에 생성한다")
+    void shouldRestoreAfterSchoolWhenOnlySelfStudyExists() {
+        AfterSchoolEntity afterSchool = givenRestoreTarget();
+        given(afterSchoolScheduleRepository.findLinkedStudentScheduleIdsByAfterSchool(afterSchool)).willReturn(List.of());
+        given(scheduleRepository.existsByStudentScheduleIdAndTypeNot(1L, ScheduleType.SELF_STUDY)).willReturn(false);
+        given(scheduleRepository.findLastStackOrderByStudentScheduleId(1L)).willReturn(0);
+
+        ScheduleRestoreResult result = strategy.restoreSchedule(RESTORE_DAY);
+
+        ArgumentCaptor<ScheduleEntity> scheduleCaptor = ArgumentCaptor.forClass(ScheduleEntity.class);
+        verify(scheduleRepository).save(scheduleCaptor.capture());
+        assertThat(scheduleCaptor.getValue().getStackOrder()).isEqualTo(1);
+        assertThat(scheduleCaptor.getValue().getType()).isEqualTo(ScheduleType.AFTER_SCHOOL);
+        verify(afterSchoolScheduleRepository).save(any(AfterSchoolScheduleEntity.class));
+        assertThat(result.restoredCount()).isEqualTo(1);
+        assertThat(result.skippedStudentScheduleIds()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("방과후 복구시 이미 같은 방과후에 연결된 학생은 건너뛴다")
+    void shouldNotRestoreWhenAlreadyLinked() {
+        AfterSchoolEntity afterSchool = givenRestoreTarget();
+        given(afterSchoolScheduleRepository.findLinkedStudentScheduleIdsByAfterSchool(afterSchool)).willReturn(List.of(1L));
+
+        ScheduleRestoreResult result = strategy.restoreSchedule(RESTORE_DAY);
+
+        verify(scheduleRepository, never()).save(any());
+        verify(afterSchoolScheduleRepository, never()).save(any());
+        assertThat(result.restoredCount()).isZero();
+        assertThat(result.skippedStudentScheduleIds()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("방과후 복구시 자습 외 다른 스케줄이 있는 학생은 가리지 않도록 건너뛰고 결과로 돌려준다")
+    void shouldSkipAndReportWhenOtherScheduleExists() {
+        AfterSchoolEntity afterSchool = givenRestoreTarget();
+        given(afterSchoolScheduleRepository.findLinkedStudentScheduleIdsByAfterSchool(afterSchool)).willReturn(List.of());
+        given(scheduleRepository.existsByStudentScheduleIdAndTypeNot(1L, ScheduleType.SELF_STUDY)).willReturn(true);
+
+        ScheduleRestoreResult result = strategy.restoreSchedule(RESTORE_DAY);
+
+        verify(scheduleRepository, never()).save(any());
+        verify(afterSchoolScheduleRepository, never()).save(any());
+        assertThat(result.restoredCount()).isZero();
+        assertThat(result.skippedStudentScheduleIds()).containsExactly(1L);
+    }
+
+    private AfterSchoolEntity givenRestoreTarget() {
+        BranchEntity branch = BranchEntity.builder()
+                .startDay(LocalDate.of(2026, 8, 3))
+                .endDay(LocalDate.of(2026, 10, 25))
+                .afterSchoolEndDay(LocalDate.of(2026, 10, 25))
+                .year(2026)
+                .branch(3)
+                .build();
+
+        AfterSchoolEntity afterSchool = mock(AfterSchoolEntity.class);
+        given(afterSchool.getIsEnd()).willReturn(false);
+        given(afterSchool.getWeekDay()).willReturn(WeekDay.THU);
+        given(afterSchool.getPeriod()).willReturn(SchoolPeriod.EIGHT_AND_NINE_PERIOD);
+
+        StudentScheduleEntity studentSchedule = mock(StudentScheduleEntity.class);
+        given(studentSchedule.getId()).willReturn(1L);
+
+        LocalDate thursday = RESTORE_DAY.plusDays(1);
+        given(branchRepository.findAllOverlapping(any(), any())).willReturn(List.of(branch));
+        given(afterSchoolRepository.findAllByBranch(branch)).willReturn(List.of(afterSchool));
+        given(afterSchoolBusinessTripRepository.existsByAfterSchoolAndDay(afterSchool, thursday)).willReturn(false);
+        given(studentScheduleRepository.findAllByAfterSchoolAndDayAndPeriod(afterSchool, thursday, SchoolPeriod.EIGHT_AND_NINE_PERIOD))
+                .willReturn(List.of(studentSchedule));
+        return afterSchool;
     }
 }

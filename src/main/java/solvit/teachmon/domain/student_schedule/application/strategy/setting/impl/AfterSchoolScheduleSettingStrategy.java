@@ -1,12 +1,14 @@
 package solvit.teachmon.domain.student_schedule.application.strategy.setting.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolEntity;
 import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolBusinessTripRepository;
 import solvit.teachmon.domain.after_school.domain.repository.AfterSchoolRepository;
 import solvit.teachmon.domain.branch.domain.entity.BranchEntity;
 import solvit.teachmon.domain.branch.domain.repository.BranchRepository;
+import solvit.teachmon.domain.student_schedule.application.dto.ScheduleRestoreResult;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategy;
 import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.StudentScheduleEntity;
@@ -16,9 +18,12 @@ import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleReposit
 import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.repository.schedules.AfterSchoolScheduleRepository;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class AfterSchoolScheduleSettingStrategy implements StudentScheduleSettingStrategy {
@@ -62,6 +67,54 @@ public class AfterSchoolScheduleSettingStrategy implements StudentScheduleSettin
                 settingAfterSchoolSchedule(studentSchedules, afterSchool);
             }
         }
+    }
+
+    /**
+     * 누락된 방과후 스케줄 복구 (일회성)
+     * fromDate 주의 fromDate 이후(포함) 방과후 중 아직 연결되지 않은 학생에게만 생성한다.
+     * 방과후는 자습 바로 위에 있어야 하므로, 자습 외 다른 스케줄(이석, 이탈 등)이 이미 있는 학생은
+     * 맨 위에 쌓으면 그 스케줄을 가리게 되어 건너뛰고 결과로 돌려준다.
+     */
+    public ScheduleRestoreResult restoreSchedule(LocalDate fromDate) {
+        List<BranchEntity> branches = branchRepository.findAllOverlapping(fromDate, fromDate.with(DayOfWeek.SUNDAY));
+
+        int restoredCount = 0;
+        List<Long> skippedStudentScheduleIds = new ArrayList<>();
+        for (BranchEntity branch : branches) {
+            for (AfterSchoolEntity afterSchool : afterSchoolRepository.findAllByBranch(branch)) {
+                LocalDate afterSchoolDay = calculateAfterSchoolDay(afterSchool, fromDate);
+
+                if (afterSchool.getIsEnd())
+                    continue;
+                else if (isOutOfBranchPeriod(afterSchoolDay, branch))
+                    continue;
+                else if (afterSchoolBusinessTripRepository.existsByAfterSchoolAndDay(afterSchool, afterSchoolDay))
+                    continue;
+                else if (isBeforeAfterSchool(afterSchool, fromDate))
+                    continue;
+
+                List<Long> alreadyLinkedStudentScheduleIds = afterSchoolScheduleRepository.findLinkedStudentScheduleIdsByAfterSchool(afterSchool);
+
+                for (StudentScheduleEntity studentSchedule : findStudentScheduleByAfterSchool(afterSchool, fromDate)) {
+                    if (alreadyLinkedStudentScheduleIds.contains(studentSchedule.getId()))
+                        continue;
+                    if (scheduleRepository.existsByStudentScheduleIdAndTypeNot(studentSchedule.getId(), ScheduleType.SELF_STUDY)) {
+                        skippedStudentScheduleIds.add(studentSchedule.getId());
+                        continue;
+                    }
+
+                    ScheduleEntity newSchedule = createNewSchedule(studentSchedule);
+                    createAfterSchoolSchedule(newSchedule, afterSchool);
+                    restoredCount++;
+                }
+            }
+        }
+
+        if (!skippedStudentScheduleIds.isEmpty()) {
+            log.warn("방과후 복구 건너뜀 (다른 스케줄 존재) - studentScheduleIds: {}", skippedStudentScheduleIds);
+        }
+
+        return new ScheduleRestoreResult(restoredCount, skippedStudentScheduleIds);
     }
 
     private boolean isOutOfBranchPeriod(LocalDate day, BranchEntity branch) {

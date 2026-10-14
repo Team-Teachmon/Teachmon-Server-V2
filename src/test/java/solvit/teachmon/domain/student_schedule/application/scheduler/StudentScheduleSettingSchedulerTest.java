@@ -9,10 +9,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import solvit.teachmon.domain.student_schedule.application.service.StudentScheduleSettingService;
+import solvit.teachmon.global.infra.discord.DiscordAlertService;
 
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -21,6 +25,9 @@ class StudentScheduleSettingSchedulerTest {
 
     @Mock
     private StudentScheduleSettingService studentScheduleSettingService;
+
+    @Mock
+    private DiscordAlertService discordAlertService;
 
     @InjectMocks
     private StudentScheduleSettingScheduler scheduler;
@@ -106,5 +113,34 @@ class StudentScheduleSettingSchedulerTest {
         //    - stackOrder로 관리
         //    - 나중에 추가된 스케줄이 더 높은 우선순위를 가짐
         //    - 예: EXIT, AWAY는 기본 스케줄을 덮어씀
+    }
+
+
+    @Test
+    @DisplayName("스케줄 설정에 실패하면 예외를 삼키지 않고 배치 실패 알림을 보낸다")
+    void shouldAlertWhenSettingScheduleFails() {
+        RuntimeException exception = new RuntimeException("배정 가능한 장소가 없습니다.");
+        doThrow(exception).when(studentScheduleSettingService).settingAllTypeSchedule(any());
+
+        assertThatCode(() -> scheduler.settingStudentSchedule()).doesNotThrowAnyException();
+
+        verify(discordAlertService).alertBatchFailure(eq("주간 학생 스케줄 설정"), any(LocalDate.class), eq(exception));
+    }
+
+    @Test
+    @DisplayName("알림 전송이 실패해도 스케줄러는 예외를 던지지 않는다")
+    void shouldNotThrowWhenAlertFails() {
+        doThrow(new RuntimeException()).when(studentScheduleSettingService).settingAllTypeSchedule(any());
+        doThrow(new RuntimeException("webhook 실패")).when(discordAlertService).alertBatchFailure(any(), any(), any());
+
+        assertThatCode(() -> scheduler.settingStudentSchedule()).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("스케줄 설정에 성공하면 알림을 보내지 않는다")
+    void shouldNotAlertWhenSucceeded() {
+        scheduler.settingStudentSchedule();
+
+        verify(discordAlertService, never()).alertBatchFailure(any(), any(), any());
     }
 }

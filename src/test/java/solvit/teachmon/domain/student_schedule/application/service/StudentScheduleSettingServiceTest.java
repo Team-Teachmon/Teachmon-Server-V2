@@ -3,6 +3,7 @@ package solvit.teachmon.domain.student_schedule.application.service;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -12,13 +13,17 @@ import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
 import solvit.teachmon.domain.management.student.domain.repository.StudentRepository;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategy;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategyComposite;
+import solvit.teachmon.domain.student_schedule.application.strategy.setting.impl.FixedLeaveSeatScheduleSettingStrategy;
+import solvit.teachmon.domain.student_schedule.application.strategy.setting.impl.LeaveSeatScheduleSettingStrategy;
 import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
+import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
 import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -38,6 +43,12 @@ class StudentScheduleSettingServiceTest {
 
     @Mock
     private ScheduleRepository scheduleRepository;
+
+    @Mock
+    private FixedLeaveSeatScheduleSettingStrategy fixedLeaveSeatScheduleSettingStrategy;
+
+    @Mock
+    private LeaveSeatScheduleSettingStrategy leaveSeatScheduleSettingStrategy;
 
     @InjectMocks
     private StudentScheduleSettingService studentScheduleSettingService;
@@ -165,5 +176,22 @@ class StudentScheduleSettingServiceTest {
         given(student.getGrade()).willReturn(grade);
         given(student.getClassNumber()).willReturn(classNumber);
         return student;
+    }
+
+
+    @Test
+    @DisplayName("이석 복구시 고정 이석 전략 후 이석 전략을 실행하고 늘어난 이석 스케줄 수를 반환한다")
+    void shouldRestoreLeaveSeatScheduleInOrder() {
+        LocalDate fromDate = LocalDate.of(2026, 10, 14);
+        LocalDate endDay = LocalDate.of(2026, 10, 18);
+        given(scheduleRepository.countByTypeAndDayBetween(ScheduleType.LEAVE_SEAT, fromDate, endDay))
+                .willReturn(86L, 120L);
+
+        long restoredCount = studentScheduleSettingService.restoreLeaveSeatSchedule(fromDate);
+
+        InOrder inOrder = inOrder(fixedLeaveSeatScheduleSettingStrategy, leaveSeatScheduleSettingStrategy);
+        inOrder.verify(fixedLeaveSeatScheduleSettingStrategy).settingSchedule(fromDate);
+        inOrder.verify(leaveSeatScheduleSettingStrategy).settingSchedule(fromDate);
+        assertThat(restoredCount).isEqualTo(34L);
     }
 }
