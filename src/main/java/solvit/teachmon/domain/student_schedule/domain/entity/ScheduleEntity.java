@@ -88,12 +88,4 @@ public class ScheduleEntity extends BaseEntity {
                 .type(type)
                 .build();
     }
-
-    public static ScheduleEntity createBottomStudentSchedule(StudentScheduleEntity studentSchedule, Integer firstStackOrder, ScheduleType type) {
-        return ScheduleEntity.builder()
-                .studentSchedule(studentSchedule)
-                .stackOrder(firstStackOrder - 1)
-                .type(type)
-                .build();
-    }
 }
