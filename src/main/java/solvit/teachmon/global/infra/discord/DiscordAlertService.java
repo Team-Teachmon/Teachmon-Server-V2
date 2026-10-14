@@ -17,6 +17,7 @@ import solvit.teachmon.global.security.user.TeachmonUserDetails;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -39,6 +40,26 @@ public class DiscordAlertService {
                 .toBodilessEntity();
     }
 
+    // 스케줄러(배치)는 요청이 없어 GlobalExceptionHandler를 거치지 않으므로 직접 알린다
+    public void alertBatchFailure(String jobName, LocalDate baseDate, Throwable throwable) {
+        Map<String, Object> embed = new LinkedHashMap<>();
+        embed.put("title", "🚨 배치 실패");
+        embed.put("color", 16711680);
+        embed.put("fields", Arrays.asList(
+                field("발생시각", LocalDateTime.now(ZoneId.of("Asia/Seoul")).toString(), false),
+                field("배치", jobName, false),
+                field("기준일", String.valueOf(baseDate), true),
+                field("예외", throwable.getClass().getName(), false),
+                field("메시지", limit(throwable.getMessage()), false)
+        ));
+
+        restClient.post()
+                .uri(discordProperties.getWebhook())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("embeds", List.of(embed)))
+                .retrieve()
+                .toBodilessEntity();
+    }
 
     private Map<String, Object> prepareDiscordPayload(HttpServletRequest request, ErrorResponse errorResponse) {
         RequesterInfo requester = resolveRequester();

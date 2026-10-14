@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import solvit.teachmon.domain.after_school.domain.entity.AfterSchoolEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.schedules.AfterSchoolScheduleEntity;
 
 import java.util.List;
@@ -15,6 +16,9 @@ public interface AfterSchoolScheduleRepository extends JpaRepository<AfterSchool
     @Modifying
     @Query("DELETE FROM AfterSchoolScheduleEntity a WHERE a.schedule.id IN :scheduleIds")
     void deleteByScheduleIds(@Param("scheduleIds") List<Long> scheduleIds);
+
+    @Query("SELECT a.schedule.studentSchedule.id FROM AfterSchoolScheduleEntity a WHERE a.afterSchool = :afterSchool")
+    List<Long> findLinkedStudentScheduleIdsByAfterSchool(@Param("afterSchool") AfterSchoolEntity afterSchool);
 
     @Query("SELECT a.schedule.id FROM AfterSchoolScheduleEntity a WHERE a.afterSchool.id = :afterSchoolId")
     List<Long> findScheduleIdsByAfterSchoolId(@Param("afterSchoolId") Long afterSchoolId);
