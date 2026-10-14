@@ -7,13 +7,7 @@ import solvit.teachmon.domain.management.student.domain.entity.StudentEntity;
 import solvit.teachmon.domain.management.student.domain.repository.StudentRepository;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategy;
 import solvit.teachmon.domain.student_schedule.application.strategy.setting.StudentScheduleSettingStrategyComposite;
-import solvit.teachmon.domain.student_schedule.application.dto.ScheduleRestoreResult;
-import solvit.teachmon.domain.student_schedule.application.strategy.setting.impl.AfterSchoolScheduleSettingStrategy;
-import solvit.teachmon.domain.student_schedule.application.strategy.setting.impl.FixedLeaveSeatScheduleSettingStrategy;
-import solvit.teachmon.domain.student_schedule.application.strategy.setting.impl.LeaveSeatScheduleSettingStrategy;
-import solvit.teachmon.domain.student_schedule.application.strategy.setting.impl.SelfStudyScheduleSettingStrategy;
 import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
-import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
 import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
 
 import java.time.DayOfWeek;
@@ -27,10 +21,6 @@ public class StudentScheduleSettingService {
     private final StudentRepository studentRepository;
     private final StudentScheduleGenerator studentScheduleGenerator;
     private final ScheduleRepository scheduleRepository;
-    private final SelfStudyScheduleSettingStrategy selfStudyScheduleSettingStrategy;
-    private final AfterSchoolScheduleSettingStrategy afterSchoolScheduleSettingStrategy;
-    private final FixedLeaveSeatScheduleSettingStrategy fixedLeaveSeatScheduleSettingStrategy;
-    private final LeaveSeatScheduleSettingStrategy leaveSeatScheduleSettingStrategy;
 
     @Transactional
     public void createNewStudentSchedule(LocalDate baseDate) {
@@ -59,32 +49,6 @@ public class StudentScheduleSettingService {
         for(StudentScheduleSettingStrategy settingStrategy : settingStrategies) {
             settingStrategy.settingSchedule(baseDate);
         }
-    }
-
-    // 2026-10-11 스케줄러 실패로 누락된 자습 스케줄 복구용 (복구 완료 후 제거)
-    @Transactional
-    public int restoreSelfStudySchedule(LocalDate fromDate) {
-        return selfStudyScheduleSettingStrategy.restoreSchedule(fromDate);
-    }
-
-    // 2026-10-11 스케줄러 실패로 누락된 방과후 스케줄 복구용 (복구 완료 후 제거)
-    @Transactional
-    public ScheduleRestoreResult restoreAfterSchoolSchedule(LocalDate fromDate) {
-        return afterSchoolScheduleSettingStrategy.restoreSchedule(fromDate);
-    }
-
-    // 2026-10-11 스케줄러 실패로 누락된 이석 스케줄 복구용 (복구 완료 후 제거)
-    // 두 전략 모두 이미 생성된 이석/연결은 건너뛰므로 재호출해도 중복이 생기지 않는다.
-    @Transactional
-    public long restoreLeaveSeatSchedule(LocalDate fromDate) {
-        LocalDate endDay = fromDate.with(DayOfWeek.SUNDAY);
-        long beforeCount = scheduleRepository.countByTypeAndDayBetween(ScheduleType.LEAVE_SEAT, fromDate, endDay);
-
-        // 고정 이석으로부터 이번 주 이석을 먼저 만든 뒤, 이석 스케줄을 연결한다
-        fixedLeaveSeatScheduleSettingStrategy.settingSchedule(fromDate);
-        leaveSeatScheduleSettingStrategy.settingSchedule(fromDate);
-
-        return scheduleRepository.countByTypeAndDayBetween(ScheduleType.LEAVE_SEAT, fromDate, endDay) - beforeCount;
     }
 
     /**

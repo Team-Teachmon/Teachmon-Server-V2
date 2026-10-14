@@ -20,7 +20,6 @@ import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleReposit
 import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.repository.schedules.SelfStudyScheduleRepository;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -69,47 +68,6 @@ public class SelfStudyScheduleSettingStrategy implements StudentScheduleSettingS
                 settingSelfStudySchedule(studentSchedules, selfStudy);
             }
         }
-    }
-
-    /**
-     * 누락된 자습 스케줄 복구 (일회성)
-     * fromDate 주의 fromDate 이후(포함) 자습 중 SELF_STUDY 스케줄이 없는 학생에게만 생성하며,
-     * 이미 들어간 방과후/이석 등을 덮지 않도록 스택 맨 아래에 넣는다.
-     */
-    public int restoreSchedule(LocalDate fromDate) {
-        List<BranchEntity> branches = branchRepository.findAllOverlapping(fromDate, fromDate.with(DayOfWeek.SUNDAY));
-
-        int restoredCount = 0;
-        for(BranchEntity branch : branches) {
-            for(SelfStudyEntity selfStudy : selfStudyRepository.findAllByBranch(branch)) {
-                if(isOutOfBranchPeriod(calculateSelfStudyDay(selfStudy, fromDate), branch))
-                    continue;
-                if(isBeforeSelfStudy(selfStudy, fromDate))
-                    continue;
-
-                for(StudentScheduleEntity studentSchedule : findStudentScheduleBySelfStudy(selfStudy, fromDate)) {
-                    if(scheduleRepository.existsByStudentScheduleIdAndType(studentSchedule.getId(), ScheduleType.SELF_STUDY))
-                        continue;
-
-                    PlaceEntity place;
-                    try {
-                        place = findSelfStudyPlace(studentSchedule);
-                    } catch (NoAvailablePlaceException e) {
-                        log.warn("자습 장소 배정 실패 - studentScheduleId: {}, day: {}, period: {}",
-                                studentSchedule.getId(), studentSchedule.getDay(), studentSchedule.getPeriod());
-                        continue;
-                    }
-
-                    Integer firstStackOrder = scheduleRepository.findFirstStackOrderByStudentScheduleId(studentSchedule.getId());
-                    ScheduleEntity bottomSchedule = ScheduleEntity.createBottomStudentSchedule(studentSchedule, firstStackOrder, ScheduleType.SELF_STUDY);
-                    scheduleRepository.save(bottomSchedule);
-                    createSelfStudySchedule(bottomSchedule, selfStudy, place);
-                    restoredCount++;
-                }
-            }
-        }
-
-        return restoredCount;
     }
 
     private boolean isOutOfBranchPeriod(LocalDate day, BranchEntity branch) {

@@ -3,7 +3,6 @@ package solvit.teachmon.domain.student_schedule.application.strategy.setting.imp
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -16,10 +15,8 @@ import solvit.teachmon.domain.place.domain.entity.PlaceEntity;
 import solvit.teachmon.domain.place.domain.repository.PlaceRepository;
 import solvit.teachmon.domain.self_study.domain.entity.SelfStudyEntity;
 import solvit.teachmon.domain.self_study.domain.repository.SelfStudyRepository;
-import solvit.teachmon.domain.student_schedule.domain.entity.ScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.StudentScheduleEntity;
 import solvit.teachmon.domain.student_schedule.domain.entity.schedules.SelfStudyScheduleEntity;
-import solvit.teachmon.domain.student_schedule.domain.enums.ScheduleType;
 import solvit.teachmon.domain.student_schedule.domain.repository.ScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.repository.StudentScheduleRepository;
 import solvit.teachmon.domain.student_schedule.domain.repository.schedules.SelfStudyScheduleRepository;
@@ -33,7 +30,6 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -163,51 +159,6 @@ class SelfStudyScheduleSettingStrategyTest {
 
         verify(scheduleRepository, never()).save(any());
         verify(selfStudyScheduleRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("자습 복구시 기존 스케줄을 덮지 않도록 스택 맨 아래에 넣는다")
-    void shouldRestoreSelfStudyAtBottomOfStack() {
-        PlaceEntity place = givenTuesdaySelfStudy();
-        given(placeRepository.checkPlaceAvailability(TUESDAY, SchoolPeriod.EIGHT_AND_NINE_PERIOD, place)).willReturn(false);
-        given(scheduleRepository.existsByStudentScheduleIdAndType(1L, ScheduleType.SELF_STUDY)).willReturn(false);
-        // 이미 이석 스케줄이 stackOrder 1로 들어가 있음
-        given(scheduleRepository.findFirstStackOrderByStudentScheduleId(1L)).willReturn(1);
-
-        int restoredCount = strategy.restoreSchedule(TUESDAY);
-
-        ArgumentCaptor<ScheduleEntity> scheduleCaptor = ArgumentCaptor.forClass(ScheduleEntity.class);
-        verify(scheduleRepository).save(scheduleCaptor.capture());
-        assertThat(scheduleCaptor.getValue().getStackOrder()).isEqualTo(0);
-        assertThat(scheduleCaptor.getValue().getType()).isEqualTo(ScheduleType.SELF_STUDY);
-        verify(selfStudyScheduleRepository).save(any(SelfStudyScheduleEntity.class));
-        assertThat(restoredCount).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("이미 자습 스케줄이 있는 학생은 복구하지 않는다")
-    void shouldNotRestoreWhenSelfStudyAlreadyExists() {
-        givenTuesdaySelfStudy();
-        given(scheduleRepository.existsByStudentScheduleIdAndType(1L, ScheduleType.SELF_STUDY)).willReturn(true);
-
-        int restoredCount = strategy.restoreSchedule(TUESDAY);
-
-        verify(scheduleRepository, never()).save(any());
-        verify(selfStudyScheduleRepository, never()).save(any());
-        assertThat(restoredCount).isZero();
-    }
-
-    @Test
-    @DisplayName("복구 시작일 이전 날짜의 자습은 복구하지 않는다")
-    void shouldNotRestoreBeforeFromDate() {
-        givenTuesdaySelfStudy();
-        LocalDate wednesday = TUESDAY.plusDays(1);
-
-        int restoredCount = strategy.restoreSchedule(wednesday);
-
-        verify(studentScheduleRepository, never()).findAllByGradeAndDayAndPeriod(eq(3), eq(TUESDAY), any());
-        verify(scheduleRepository, never()).save(any());
-        assertThat(restoredCount).isZero();
     }
 
     private PlaceEntity givenTuesdaySelfStudy() {
