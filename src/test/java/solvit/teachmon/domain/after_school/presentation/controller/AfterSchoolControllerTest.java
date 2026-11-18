@@ -22,6 +22,7 @@ import solvit.teachmon.global.enums.WeekDay;
 import solvit.teachmon.global.enums.SchoolPeriod;
 import solvit.teachmon.global.security.user.TeachmonUserDetails;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -142,14 +143,27 @@ class AfterSchoolControllerTest {
                 .willReturn(List.of(responseDto));
 
         ResponseEntity<List<AfterSchoolResponseDto>> response = afterSchoolController.searchAfterSchools(
-                grade, branch, weekDay, startPeriod, endPeriod
+                grade, branch, weekDay, startPeriod, endPeriod, null
         );
         assertThat(response.getStatusCode().value()).isEqualTo(200);
         assertThat(response.getBody()).hasSize(1);
         assertThat(response.getBody().getFirst().id()).isEqualTo("1");
         assertThat(response.getBody().getFirst().name()).isEqualTo("파이썬을 이용한 문제해결");
         
-        verify(afterSchoolService).searchAfterSchools(any(AfterSchoolSearchRequestDto.class));
+        verify(afterSchoolService).searchAfterSchools(
+                argThat(request -> request.year().equals(LocalDate.now().getYear()) && request.branch().equals(branch))
+        );
+    }
+
+    @Test
+    @DisplayName("방과후 검색 시 연도를 넘기면 해당 연도로 조회한다")
+    void shouldSearchAfterSchoolsWithGivenYear() {
+        given(afterSchoolService.searchAfterSchools(any(AfterSchoolSearchRequestDto.class)))
+                .willReturn(List.of());
+
+        afterSchoolController.searchAfterSchools(2, 2, WeekDay.MON, 7, 7, 2025);
+
+        verify(afterSchoolService).searchAfterSchools(argThat(request -> request.year().equals(2025)));
     }
 
     private static AfterSchoolResponseDto getAfterSchoolResponseDto() {
