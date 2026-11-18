@@ -19,6 +19,7 @@ import solvit.teachmon.domain.after_school.presentation.dto.response.*;
 import solvit.teachmon.global.enums.WeekDay;
 import solvit.teachmon.global.security.user.TeachmonUserDetails;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -34,9 +35,11 @@ public class AfterSchoolController {
             @RequestParam(name = "branch") @NotNull(message = "분기는 필수입니다.") Integer branch,
             @RequestParam(name = "week_day") @NotNull(message = "요일은 필수입니다.") WeekDay weekDay,
             @RequestParam(name = "start_period") @NotNull(message = "시작 교시는 필수입니다.") Integer startPeriod,
-            @RequestParam(name = "end_period") @NotNull(message = "종료 교시는 필수입니다.") Integer endPeriod) {
+            @RequestParam(name = "end_period") @NotNull(message = "종료 교시는 필수입니다.") Integer endPeriod,
+            @RequestParam(required = false) Integer year) {
+        int searchYear = year != null ? year : LocalDate.now().getYear();
         AfterSchoolSearchRequestDto searchRequest = new AfterSchoolSearchRequestDto(
-                grade, branch, weekDay, startPeriod, endPeriod
+                grade, searchYear, branch, weekDay, startPeriod, endPeriod
         );
         List<AfterSchoolResponseDto> results = afterSchoolService.searchAfterSchools(searchRequest);
         return ResponseEntity.ok(results);

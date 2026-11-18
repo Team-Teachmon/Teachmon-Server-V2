@@ -60,9 +60,11 @@ public class AfterSchoolRepositoryImpl implements AfterSchoolQueryDslRepository 
                 .selectFrom(afterSchool)
                 .join(afterSchool.teacher, teacher).fetchJoin()
                 .join(afterSchool.place, place).fetchJoin()
+                .join(afterSchool.branch, branch)
                 .where(
-                        isNotEnded(),
+                        isNotEndedOrBranchFinished(LocalDate.now()),
                         gradeEq(searchRequest.grade()),
+                        yearEq(searchRequest.year()),
                         branchEq(searchRequest.branch()),
                         weekDayEq(searchRequest.weekDay()),
                         periodEq(searchRequest.startPeriod(), searchRequest.endPeriod())
@@ -97,8 +99,13 @@ public class AfterSchoolRepositoryImpl implements AfterSchoolQueryDslRepository 
         return null;
     }
 
-    private BooleanExpression isNotEnded() {
-        return afterSchool.isEnd.eq(false);
+    // 진행 중(또는 시작 전) 분기는 폐강·종료된 방과후를 숨기고, 이미 끝난 분기는 종료 여부와 관계없이 모두 보여준다
+    private BooleanExpression isNotEndedOrBranchFinished(LocalDate today) {
+        return afterSchool.isEnd.eq(false).or(branch.endDay.lt(today));
+    }
+
+    private BooleanExpression yearEq(Integer year) {
+        return year != null ? branch.year.eq(year) : null;
     }
 
     private BooleanExpression gradeEq(Integer grade) {
@@ -106,7 +113,7 @@ public class AfterSchoolRepositoryImpl implements AfterSchoolQueryDslRepository 
     }
 
     private BooleanExpression branchEq(Integer branchNumber) {
-        return branchNumber != null ? afterSchool.branch.branch.eq(branchNumber) : null;
+        return branchNumber != null ? branch.branch.eq(branchNumber) : null;
     }
 
     private BooleanExpression weekDayEq(WeekDay weekDay) {
