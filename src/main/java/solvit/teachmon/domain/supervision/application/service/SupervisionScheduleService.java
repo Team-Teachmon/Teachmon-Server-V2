@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import solvit.teachmon.domain.supervision.application.mapper.SupervisionScheduleRequestMapper;
 import solvit.teachmon.domain.supervision.domain.entity.SupervisionScheduleEntity;
 import solvit.teachmon.domain.supervision.domain.enums.SupervisionType;
 import solvit.teachmon.domain.supervision.domain.repository.SupervisionExchangeRepository;
@@ -24,7 +23,11 @@ import solvit.teachmon.global.enums.SchoolPeriod;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -34,23 +37,94 @@ public class SupervisionScheduleService {
     private final SupervisionScheduleRepository supervisionScheduleRepository;
     private final SupervisionExchangeRepository supervisionExchangeRepository;
     private final TeacherRepository teacherRepository;
-    private final SupervisionScheduleRequestMapper mapper;
 
     @Transactional
     public void createSupervisionSchedule(SupervisionScheduleCreateRequestDto requestDto) {
         createSupervisionSchedulesInternal(requestDto);
     }
 
+    /**
+     * 그날 일정을 지우고 다시 만들지 않고, 칸(타입·교시)별로 기존 일정의 담당 교사만 바꾼다.
+     * 일정 ID 가 유지되므로 그 일정에 걸린 교체 신청도 유지된다.
+     * - 칸이 비어 있으면 새로 만든다.
+     * - 요청에서 빠진 칸(7교시 미지정 등)과 같은 칸의 중복 행은 삭제하고, 그 일정에 걸린 교체 신청만 함께 삭제한다.
+     */
     @Transactional
     public void updateSupervisionSchedule(SupervisionScheduleUpdateRequestDto requestDto) {
-        // 해당 날짜의 기존 감독 일정들을 모두 삭제
-        supervisionExchangeRepository.deleteExchangeByDay(requestDto.day());
-        supervisionScheduleRepository.deleteByDay(requestDto.day());
-        
-        // 새로운 감독 일정 생성
-        createSupervisionSchedulesInternal(mapper.toCreateRequest(requestDto));
+        LocalDate day = requestDto.day();
+        Map<ScheduleSlot, TeacherEntity> requested = requestedAssignments(requestDto);
+
+        Map<ScheduleSlot, List<SupervisionScheduleEntity>> existing = new HashMap<>();
+        supervisionScheduleRepository.findAllByDay(day).stream()
+                .sorted(Comparator.comparing(SupervisionScheduleEntity::getId))
+                .forEach(schedule -> existing.computeIfAbsent(ScheduleSlot.of(schedule), key -> new ArrayList<>()).add(schedule));
+
+        List<SupervisionScheduleEntity> toCreate = new ArrayList<>();
+        List<SupervisionScheduleEntity> toRemove = new ArrayList<>();
+
+        requested.forEach((slot, teacher) -> {
+            List<SupervisionScheduleEntity> schedules = existing.getOrDefault(slot, List.of());
+            existing.remove(slot);
+            if (teacher == null) {
+                toRemove.addAll(schedules);
+            } else if (schedules.isEmpty()) {
+                toCreate.add(slot.create(teacher, day));
+            } else {
+                schedules.getFirst().changeTeacher(teacher);
+                toRemove.addAll(schedules.subList(1, schedules.size()));
+            }
+        });
+        // 요청에 없는 칸의 일정(예상하지 못한 교시 등)은 정리한다
+        existing.values().forEach(toRemove::addAll);
+
+        removeSchedules(toRemove);
+        supervisionScheduleRepository.saveAll(toCreate);
     }
-    
+
+    private Map<ScheduleSlot, TeacherEntity> requestedAssignments(SupervisionScheduleUpdateRequestDto requestDto) {
+        TeacherEntity selfStudyTeacher = teacherRepository.findById(requestDto.selfStudySupervisionTeacherId())
+                .orElseThrow(TeacherNotFoundException::new);
+        TeacherEntity leaveSeatTeacher = teacherRepository.findById(requestDto.leaveSeatSupervisionTeacherId())
+                .orElseThrow(TeacherNotFoundException::new);
+        TeacherEntity seventhPeriodTeacher = requestDto.seventhPeriodSupervisionTeacherId() == null
+                ? null
+                : teacherRepository.findById(requestDto.seventhPeriodSupervisionTeacherId())
+                        .orElseThrow(TeacherNotFoundException::new);
+
+        Map<ScheduleSlot, TeacherEntity> requested = new LinkedHashMap<>();
+        for (SchoolPeriod period : List.of(SchoolPeriod.EIGHT_AND_NINE_PERIOD, SchoolPeriod.TEN_AND_ELEVEN_PERIOD)) {
+            requested.put(new ScheduleSlot(SupervisionType.SELF_STUDY_SUPERVISION, period), selfStudyTeacher);
+            requested.put(new ScheduleSlot(SupervisionType.LEAVE_SEAT_SUPERVISION, period), leaveSeatTeacher);
+        }
+        requested.put(new ScheduleSlot(SupervisionType.SEVENTH_PERIOD_SUPERVISION, SchoolPeriod.SEVEN_PERIOD), seventhPeriodTeacher);
+        return requested;
+    }
+
+    /**
+     * 일정을 삭제한다. 삭제되는 일정을 참조하는 교체 신청만 먼저 삭제한다(FK).
+     */
+    private void removeSchedules(List<SupervisionScheduleEntity> schedules) {
+        if (schedules.isEmpty()) {
+            return;
+        }
+        supervisionExchangeRepository.deleteAllBySchedules(schedules);
+        supervisionScheduleRepository.deleteAllInBatch(schedules);
+    }
+
+    private record ScheduleSlot(SupervisionType type, SchoolPeriod period) {
+        static ScheduleSlot of(SupervisionScheduleEntity schedule) {
+            return new ScheduleSlot(schedule.getType(), schedule.getPeriod());
+        }
+
+        SupervisionScheduleEntity create(TeacherEntity teacher, LocalDate day) {
+            return SupervisionScheduleEntity.builder()
+                    .teacher(teacher)
+                    .day(day)
+                    .period(period)
+                    .type(type)
+                    .build();
+        }
+    }
 
     private void createSupervisionSchedulesInternal(SupervisionScheduleCreateRequestDto requestDto) {
         // 교사 조회
@@ -109,11 +183,9 @@ public class SupervisionScheduleService {
     @Transactional
     public void deleteSupervisionSchedule(SupervisionScheduleDeleteRequestDto requestDto) {
         if (requestDto.type().isAll()) {
-            supervisionExchangeRepository.deleteExchangeByDay(requestDto.day());
-            supervisionScheduleRepository.deleteByDay(requestDto.day());
+            removeSchedules(supervisionScheduleRepository.findAllByDay(requestDto.day()));
         } else {
-            supervisionExchangeRepository.deleteExchangeByDayAndType(requestDto.day(), requestDto.type().toSupervisionType());
-            supervisionScheduleRepository.deleteByDayAndType(requestDto.day(), requestDto.type().toSupervisionType());
+            removeSchedules(supervisionScheduleRepository.findAllByDayAndType(requestDto.day(), requestDto.type().toSupervisionType()));
         }
     }
 

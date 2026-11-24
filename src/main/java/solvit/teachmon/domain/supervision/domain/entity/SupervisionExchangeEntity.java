@@ -69,6 +69,7 @@ public class SupervisionExchangeEntity extends BaseEntity {
 
     public void accept() {
         validatePending("대기 중인 교체 요청만 수락할 수 있습니다.");
+        validateSchedulesUnchanged();
         this.state = SupervisionExchangeType.ACCEPTED;
     }
 
@@ -100,6 +101,16 @@ public class SupervisionExchangeEntity extends BaseEntity {
 
     public boolean isRecipient(Long teacherId) {
         return recipient.getId().equals(teacherId);
+    }
+
+    /**
+     * 신청 이후 관리자가 감독 일정의 담당자를 바꿨다면, 수락 시 엉뚱한 교사끼리 바뀌므로 막는다.
+     */
+    private void validateSchedulesUnchanged() {
+        if (!sender.getId().equals(senderSchedule.getTeacher().getId())
+                || !recipient.getId().equals(recipientSchedule.getTeacher().getId())) {
+            throw new InvalidSupervisionExchangeException("감독 일정이 변경되어 수락할 수 없습니다.");
+        }
     }
 
     private void validatePending(String message) {
