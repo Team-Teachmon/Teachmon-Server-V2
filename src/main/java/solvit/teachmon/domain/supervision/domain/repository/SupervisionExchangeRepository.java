@@ -7,9 +7,9 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import solvit.teachmon.domain.supervision.domain.entity.SupervisionExchangeEntity;
-import solvit.teachmon.domain.supervision.domain.enums.SupervisionType;
+import solvit.teachmon.domain.supervision.domain.entity.SupervisionScheduleEntity;
 
-import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,11 +33,10 @@ public interface SupervisionExchangeRepository extends JpaRepository<Supervision
     @Query("SELECT e FROM SupervisionExchangeEntity e WHERE e.id = :id")
     Optional<SupervisionExchangeEntity> findByIdForUpdate(@Param("id") Long id);
 
-    @Modifying
-    @Query("DELETE FROM SupervisionExchangeEntity se WHERE se.senderSchedule.day = :day OR se.recipientSchedule.day = :day")
-    void deleteExchangeByDay(@Param("day") LocalDate day);
-
-    @Modifying
-    @Query("DELETE FROM SupervisionExchangeEntity se WHERE (se.senderSchedule.day = :day OR se.recipientSchedule.day = :day) AND (se.senderSchedule.type = :type OR se.recipientSchedule.type = :type)")
-    void deleteExchangeByDayAndType(@Param("day") LocalDate day, @Param("type") SupervisionType type);
+    /**
+     * 주어진 감독 일정 중 하나라도 참조하는 교체 신청을 삭제한다. (일정 삭제 전 FK 정리용)
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM SupervisionExchangeEntity e WHERE e.senderSchedule IN :schedules OR e.recipientSchedule IN :schedules")
+    void deleteAllBySchedules(@Param("schedules") Collection<SupervisionScheduleEntity> schedules);
 }

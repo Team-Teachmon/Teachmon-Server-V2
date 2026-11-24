@@ -226,4 +226,41 @@ class SupervisionExchangeEntityTest {
                 .hasMessage("대기 중인 교체 요청만 거절할 수 있습니다.");
         assertThat(exchange.getState()).isEqualTo(SupervisionExchangeType.REJECTED);
     }
+
+    @Test
+    @DisplayName("신청 후 관리자가 일정 담당자를 바꿨으면 수락할 수 없고 상태가 유지된다")
+    void shouldNotAcceptWhenScheduleTeacherChanged() {
+        SupervisionExchangeEntity exchange = createExchange();
+        TeacherEntity otherTeacher = TeacherEntity.builder()
+                .name("다른교사")
+                .mail("other@test.com")
+                .providerId("3")
+                .oAuth2Type(OAuth2Type.GOOGLE)
+                .build();
+        ReflectionTestUtils.setField(otherTeacher, "id", 3L);
+        senderSchedule.changeTeacher(otherTeacher);
+
+        assertThatThrownBy(exchange::accept)
+                .isInstanceOf(InvalidSupervisionExchangeException.class)
+                .hasMessage("감독 일정이 변경되어 수락할 수 없습니다.");
+        assertThat(exchange.getState()).isEqualTo(SupervisionExchangeType.PENDING);
+    }
+
+    @Test
+    @DisplayName("일정 담당자가 바뀌었어도 거절은 할 수 있다")
+    void shouldRejectWhenScheduleTeacherChanged() {
+        SupervisionExchangeEntity exchange = createExchange();
+        TeacherEntity otherTeacher = TeacherEntity.builder()
+                .name("다른교사")
+                .mail("other@test.com")
+                .providerId("3")
+                .oAuth2Type(OAuth2Type.GOOGLE)
+                .build();
+        ReflectionTestUtils.setField(otherTeacher, "id", 3L);
+        recipientSchedule.changeTeacher(otherTeacher);
+
+        exchange.reject();
+
+        assertThat(exchange.getState()).isEqualTo(SupervisionExchangeType.REJECTED);
+    }
 }
