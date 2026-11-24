@@ -66,7 +66,7 @@ public class SupervisionExchangeService {
     @Transactional
     public void acceptSupervisionExchange(SupervisionExchangeAcceptRequestDto requestDto, Long currentUserId) {
         // 교체 요청 조회
-        SupervisionExchangeEntity exchangeEntity = supervisionExchangeRepository.findById(requestDto.exchangeRequestId())
+        SupervisionExchangeEntity exchangeEntity = supervisionExchangeRepository.findByIdForUpdate(requestDto.exchangeRequestId())
                 .orElseThrow(SupervisionExchangeNotFoundException::new);
 
         // 수신자 권한 확인 - 현재 사용자가 수신자인지 검증
@@ -91,7 +91,7 @@ public class SupervisionExchangeService {
     @Transactional
     public void rejectSupervisionExchange(SupervisionExchangeRejectRequestDto requestDto, Long currentUserId) {
         // 교체 요청 조회
-        SupervisionExchangeEntity exchangeEntity = supervisionExchangeRepository.findById(requestDto.exchangeRequestId())
+        SupervisionExchangeEntity exchangeEntity = supervisionExchangeRepository.findByIdForUpdate(requestDto.exchangeRequestId())
                 .orElseThrow(SupervisionExchangeNotFoundException::new);
 
         // 수신자 권한 확인 - 현재 사용자가 수신자인지 검증
@@ -105,7 +105,7 @@ public class SupervisionExchangeService {
 
     @Transactional(readOnly = true)
     public List<SupervisionExchangeResponseDto> getSupervisionExchanges(Long currentUserId) {
-        List<SupervisionExchangeEntity> exchanges = supervisionExchangeRepository.findByRecipientIdOrSenderIdAndExchangeTypeNotChecked(currentUserId);
+        List<SupervisionExchangeEntity> exchanges = supervisionExchangeRepository.findUncheckedByTeacherId(currentUserId);
         
         return exchanges.stream()
                 .map(mapper::toResponseDto)
@@ -115,14 +115,14 @@ public class SupervisionExchangeService {
     @Transactional
     public void checkSupervisionExchange(Long exchangeSupervisionId, Long currentUserId) {
         // 교체 요청 조회
-        SupervisionExchangeEntity exchangeEntity = supervisionExchangeRepository.findById(exchangeSupervisionId)
+        SupervisionExchangeEntity exchangeEntity = supervisionExchangeRepository.findByIdForUpdate(exchangeSupervisionId)
                 .orElseThrow(SupervisionExchangeNotFoundException::new);
 
-        // 수신자 권한 확인 - 현재 사용자가 수신자인지 검증
-        if (!exchangeEntity.getRecipient().getId().equals(currentUserId)) {
-            throw new UnauthorizedSupervisionAccessException("해당 교체 요청의 수신자만 확인할 수 있습니다.");
+        // 당사자 권한 확인 - 송신자/수신자 모두 각자 확인할 수 있다
+        if (!exchangeEntity.isSender(currentUserId) && !exchangeEntity.isRecipient(currentUserId)) {
+            throw new UnauthorizedSupervisionAccessException("해당 교체 요청의 당사자만 확인할 수 있습니다.");
         }
 
-        exchangeEntity.check();
+        exchangeEntity.check(currentUserId);
     }
 }

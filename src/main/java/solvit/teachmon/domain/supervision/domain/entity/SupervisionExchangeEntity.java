@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
 import solvit.teachmon.domain.supervision.domain.enums.SupervisionExchangeType;
 import solvit.teachmon.domain.supervision.exception.InvalidSupervisionExchangeException;
 import solvit.teachmon.domain.user.domain.entity.TeacherEntity;
@@ -38,10 +39,18 @@ public class SupervisionExchangeEntity extends BaseEntity {
     @Column(name = "reason", nullable = false)
     private String reason;
 
+    @ColumnDefault("false")
+    @Column(name = "sender_checked", nullable = false)
+    private boolean senderChecked;
+
+    @ColumnDefault("false")
+    @Column(name = "recipient_checked", nullable = false)
+    private boolean recipientChecked;
+
     @Builder
-    public SupervisionExchangeEntity(TeacherEntity sender, TeacherEntity recipient, 
-                                   SupervisionScheduleEntity senderSchedule, 
-                                   SupervisionScheduleEntity recipientSchedule, 
+    public SupervisionExchangeEntity(TeacherEntity sender, TeacherEntity recipient,
+                                   SupervisionScheduleEntity senderSchedule,
+                                   SupervisionScheduleEntity recipientSchedule,
                                    String reason) {
         validateSender(sender);
         validateRecipient(recipient);
@@ -49,7 +58,7 @@ public class SupervisionExchangeEntity extends BaseEntity {
         validateRecipientSchedule(recipientSchedule);
         validateReason(reason);
         validateDifferentTeachers(sender, recipient);
-        
+
         this.sender = sender;
         this.recipient = recipient;
         this.senderSchedule = senderSchedule;
@@ -59,14 +68,45 @@ public class SupervisionExchangeEntity extends BaseEntity {
     }
 
     public void accept() {
+        validatePending("대기 중인 교체 요청만 수락할 수 있습니다.");
         this.state = SupervisionExchangeType.ACCEPTED;
     }
 
     public void reject() {
+        validatePending("대기 중인 교체 요청만 거절할 수 있습니다.");
         this.state = SupervisionExchangeType.REJECTED;
     }
 
-    public void check() {this.state = SupervisionExchangeType.CHECKED;}
+    /**
+     * 처리 결과(수락/거절)를 확인했음을 호출한 사람 쪽에만 표시한다.
+     * 송신자와 수신자는 각자 확인하며, 한 사람이 확인해도 상대방 목록에서는 사라지지 않는다.
+     * 같은 사람이 여러 번 확인해도 예외 없이 그대로 둔다.
+     */
+    public void check(Long teacherId) {
+        if (state == SupervisionExchangeType.PENDING) {
+            throw new InvalidSupervisionExchangeException("처리가 완료된 교체 요청만 확인할 수 있습니다.");
+        }
+        if (isSender(teacherId)) {
+            this.senderChecked = true;
+        }
+        if (isRecipient(teacherId)) {
+            this.recipientChecked = true;
+        }
+    }
+
+    public boolean isSender(Long teacherId) {
+        return sender.getId().equals(teacherId);
+    }
+
+    public boolean isRecipient(Long teacherId) {
+        return recipient.getId().equals(teacherId);
+    }
+
+    private void validatePending(String message) {
+        if (state != SupervisionExchangeType.PENDING) {
+            throw new InvalidSupervisionExchangeException(message);
+        }
+    }
 
     private void validateSender(TeacherEntity sender) {
         if (sender == null) {
